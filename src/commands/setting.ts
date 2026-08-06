@@ -1,8 +1,9 @@
-import { SlashCommandBuilder, ChannelType } from 'discord.js';
+import { SlashCommandBuilder, ChannelType, PermissionFlagsBits } from 'discord.js';
 
 export const data = new SlashCommandBuilder()
   .setName('setting')
   .setDescription('번역 모니터링 채널·출력 채널·타겟 언어를 설정합니다')
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
   .addSubcommand((subcommand) =>
     subcommand
       .setName('register')
@@ -24,10 +25,20 @@ export const data = new SlashCommandBuilder()
       .addStringOption((option) =>
         option
           .setName('target-language')
-          .setDescription('타겟 언어 (ISO 639-1 코드, 예: ko, en, ja)')
+          .setDescription('번역 결과로 출력할 타겟 언어')
           .setRequired(true)
-          .setMinLength(2)
-          .setMaxLength(5)
+          .addChoices(
+            { name: '한국어', value: 'ko' },
+            { name: '영어', value: 'en' },
+            { name: '일본어', value: 'ja' },
+            { name: '중국어(간체)', value: 'zh-CN' },
+            { name: '스페인어', value: 'es' },
+            { name: '프랑스어', value: 'fr' },
+            { name: '독일어', value: 'de' },
+            { name: '러시아어', value: 'ru' },
+            { name: '이탈리아어', value: 'it' },
+            { name: '인도네시아어', value: 'id' }
+          )
       )
   )
   .addSubcommand((subcommand) =>

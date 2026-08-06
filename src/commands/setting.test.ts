@@ -1,10 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { ChannelType, PermissionFlagsBits } from 'discord.js';
 import { data } from './setting';
 
 test('setting command is named "setting"', () => {
   const json = data.toJSON();
   assert.equal(json.name, 'setting');
+});
+
+test('setting command defaults to Manage Server permission', () => {
+  const json = data.toJSON();
+  assert.equal(json.default_member_permissions, String(PermissionFlagsBits.ManageGuild));
 });
 
 test('setting command has register, list, remove subcommands', () => {
@@ -28,4 +34,26 @@ test('remove subcommand has an id option', () => {
     options?: { name: string }[];
   };
   assert.equal(remove.options?.[0]?.name, 'id');
+});
+
+test('channel options are restricted to text channels and required', () => {
+  const json = data.toJSON();
+  const register = (json.options ?? []).find((option) => option.name === 'register') as {
+    options?: { name: string; required?: boolean; channel_types?: number[] }[];
+  };
+  for (const name of ['source-channel', 'target-channel']) {
+    const option = (register.options ?? []).find((o) => o.name === name);
+    assert.deepEqual(option?.channel_types, [ChannelType.GuildText], `${name} channel_types`);
+    assert.equal(option?.required, true, `${name} required`);
+  }
+});
+
+test('target-language offers a fixed set of choices', () => {
+  const json = data.toJSON();
+  const register = (json.options ?? []).find((option) => option.name === 'register') as {
+    options?: { name: string; choices?: { value: string }[] }[];
+  };
+  const language = (register.options ?? []).find((o) => o.name === 'target-language');
+  const values = (language?.choices ?? []).map((choice) => choice.value);
+  assert.deepEqual(values, ['ko', 'en', 'ja', 'zh-CN', 'es', 'fr', 'de', 'ru', 'it', 'id']);
 });
