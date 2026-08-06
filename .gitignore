@@ -1,0 +1,6 @@
+node_modules/
+.env
+src/store/config.json
+src/store/config.json.bak
+*.tmp
+.DS_Store
