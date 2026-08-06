@@ -26,7 +26,7 @@ Discord API를 다루는 라이브러리는 언어별로 여러 종류가 있으
 | 언어 | TypeScript | 기존 `reaction-summary-bot`과 동일한 컨벤션 유지, 타입 안정성 확보 |
 | 실행 환경 | Node.js 22 LTS 이상 | discord.js 최신 버전(14.x)이 Node 22+ 를 요구하는 추세이므로, 배포 서버에도 해당 버전 설치 필요 |
 | Discord 라이브러리 | `discord.js` v14.x (2026년 7월 기준 최신 14.27.0) | 슬래시 커맨드, 이벤트 리스너, Webhook 전송 등 전 기능 지원 |
-| 실행기 | `ts-node` | 별도 빌드 단계 없이 TS 파일을 바로 실행 (기존 봇과 동일 방식) |
+| 실행기 | `ts-node` | 별도 빌드 단계 없이 TS 파일을 바로 실행 (기존 봇과 동일 방식) — 빌드 단계가 없으므로 `ts-node`/`typescript`는 devDependencies가 아니라 **런타임 의존성**(dependencies)으로 둔다 |
 | 프로세스 매니저 | `pm2` | 크래시 시 자동 재시작, 로그 관리 |
 | 설정 저장소 | JSON 파일 (Node.js 내장 `fs` 모듈) | 사양서 4.2.1 참고 — 별도 DB 없이 설정값 영구 저장. 네이티브 모듈 컴파일이 불필요해 e2-micro 배포에 유리 |
 | 번역 API 클라이언트 | `axios` 또는 Node 내장 `fetch` | DeepL, Papago 두 API만 호출 (Google 제외, 사양서 4.6) |
@@ -84,7 +84,7 @@ discord-translation-bot/
           "createdAt": "2026-07-30T09:00:00Z"
         }
       ],
-      "webhookCache": {                        // 사양서 4.4 - 출력 채널별 Webhook
+      "webhookCache": {                        // 사양서 4.4 - 출력 채널별 Webhook (webhookToken은 자격증명)
         "222222222222222222": {
           "webhookId": "...",
           "webhookToken": "..."
@@ -101,7 +101,7 @@ discord-translation-bot/
 - **원자적 쓰기**: 쓰기 중 프로세스가 종료되어 파일이 손상되는 것을 막기 위해, 임시 파일에 먼저 기록한 뒤 `fs.rename`으로 교체한다.
 - **타입 안정성**: `types/index.ts`에 위 구조에 대응하는 TypeScript 인터페이스를 정의하고, 파일 로드 시 스키마 유효성을 검증한다.
 - **버전 필드**: 향후 구조 변경 시 마이그레이션이 가능하도록 최상위에 `version` 필드를 둔다.
-- **보안**: `config.json`에는 API 키 등 민감 정보가 없다(번역 API 키는 `.env`에 전역 보관, 사양서 4.6). 그래도 관례상 `config.json`은 `.gitignore`에 포함한다.
+- **보안**: `config.json`에 번역 API 키는 없으나 `webhookToken`(자격증명)이 저장된다. `.gitignore` 필수, 배포 서버에서 `chmod 600`. 토큰을 아예 저장하지 않고 필요 시 `channel.fetchWebhooks()`로 조회/재생성하는 방안은 Phase 4 착수 시 재검토한다.
 - **백업**: 원자적 쓰기(`rename`)로 교체하기 직전에 기존 `config.json`을 `config.json.bak`으로 복사한다. 로드 시 파싱 실패 등 손상이 감지되면 `.bak`으로 폴백한다. 클라우드 업로드는 이번 범위에서 다루지 않는다.
 
 ---
@@ -114,6 +114,7 @@ discord-translation-bot/
 | `/setting list` | 현재 서버에 등록된 설정 목록 확인 | 없음 |
 | `/setting remove` | 등록된 설정 세트 삭제 | `id`(등록 시 발급된 설정 ID) |
 
+- `target-language`의 choices는 DeepL과 Papago가 **공통 지원**하는 10개 언어로 한정한다: 한국어(ko), 영어(en), 일본어(ja), 중국어 간체(zh-CN), 스페인어(es), 프랑스어(fr), 독일어(de), 러시아어(ru), 이탈리아어(it), 인도네시아어(id). 제공자별 코드 표기 차이(예: DeepL의 `EN-US`)는 Phase 3의 `translationService`에서 변환한다.
 - 번역 API 키/우선순위를 다루는 슬래시 커맨드는 없다. 사양서 4.6에 따라 DeepL/Papago 키는 `.env`에 전역 보관하고 우선순위는 코드 상수로 고정하므로, 서버 관리자가 등록·조정할 대상 자체가 없다.
 - 명령어와 파라미터 이름은 모두 **영어**로 작성한다 (예: `/설정`이 아닌 `/setting`). 디스코드 슬래시 커맨드 이름은 소문자와 하이픈(`-`)만 사용하는 것이 관례이며, 표시되는 설명(description) 문구는 한국어로 작성해 사용성을 유지한다.
 - 표에 적힌 `/setting register`, `/setting list`, `/setting remove`는 명령어 이름에 공백이 들어가는 것이 아니라, discord.js의 **서브커맨드(Subcommand)** 구조로 구현한다. 최상위 명령어 `setting` 하나를 등록하고, `SlashCommandBuilder`의 `.addSubcommand(...)`로 `register`/`list`/`remove`를 하위 명령으로 추가하는 방식이다. 사용자가 `/setting`까지 입력하면 디스코드 클라이언트가 서브커맨드 자동완성 목록을 보여주며, 그 결과 화면상으로는 `/setting register`처럼 공백이 있는 것처럼 보인다.
