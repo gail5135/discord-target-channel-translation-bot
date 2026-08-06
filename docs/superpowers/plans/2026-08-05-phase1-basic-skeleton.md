@@ -17,7 +17,7 @@
 - 슬래시 커맨드/파라미터 이름은 영어 소문자+하이픈, `SlashCommandBuilder.addSubcommand()` 구조, description 문구는 한국어 — CLAUDE.md 확정된 설계 결정
 - 채널 파라미터는 `ChannelType.GuildText`로 텍스트 채널만 선택 가능하도록 제한 — dev-plan.md 5장
 - 봇 토큰 등 민감 정보는 `.env`로만 관리하고 절대 커밋하지 않는다 — CLAUDE.md 주의사항
-- 이 저장소의 git 루트는 프로젝트 폴더가 아니라 홈 디렉토리(`/Users/gail5135`)다. 커밋 시 `git add -A`/`git add .`를 쓰지 말고, 반드시 이 프로젝트 안의 파일 경로를 하나씩 명시해서 스테이징한다.
+- 이 프로젝트 폴더 자체가 독립된 git 저장소다(`git init`으로 새로 생성됨, 상위 홈 디렉토리 저장소와 무관). 그래도 커밋 시 `git add -A`/`git add .` 대신 변경한 파일 경로를 하나씩 명시해서 스테이징한다.
 
 ---
 
