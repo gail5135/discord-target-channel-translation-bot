@@ -24,29 +24,37 @@ function readAndParse(filePath: string): StoreData | undefined {
 }
 
 export function loadStore(filePath: string): StoreData {
-  if (!fs.existsSync(filePath)) {
-    const defaultData: StoreData = { version: 1, guilds: {} };
-    saveStore(filePath, defaultData);
-    return defaultData;
-  }
-
   const main = readAndParse(filePath);
   if (main) return main;
 
+  const mainExists = fs.existsSync(filePath);
   const backup = readAndParse(`${filePath}.bak`);
+
   if (backup) {
-    console.error(`[jsonStore] ${filePath} is corrupted, recovered from .bak`);
+    const reason = mainExists ? 'corrupted' : 'missing';
+    console.error(`[jsonStore] ${filePath} is ${reason}, recovered from .bak`);
+    saveStore(filePath, backup, { skipBackup: true });
     return backup;
   }
 
-  throw new Error(`Config file corrupted and no valid backup found: ${filePath}`);
+  if (mainExists) {
+    throw new Error(`Config file corrupted and no valid backup found: ${filePath}`);
+  }
+
+  const defaultData: StoreData = { version: 1, guilds: {} };
+  saveStore(filePath, defaultData, { skipBackup: true });
+  return defaultData;
 }
 
-export function saveStore(filePath: string, data: StoreData): void {
+export function saveStore(
+  filePath: string,
+  data: StoreData,
+  options: { skipBackup?: boolean } = {}
+): void {
   const dir = path.dirname(filePath);
   fs.mkdirSync(dir, { recursive: true });
 
-  if (fs.existsSync(filePath)) {
+  if (!options.skipBackup && fs.existsSync(filePath)) {
     fs.copyFileSync(filePath, `${filePath}.bak`);
   }
 

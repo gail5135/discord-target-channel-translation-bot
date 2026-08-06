@@ -55,6 +55,38 @@ test('loadStore throws when both the main file and the backup are invalid', () =
   assert.throws(() => loadStore(filePath));
 });
 
+test('loadStore recovers from .bak when the main file is missing, and preserves it', () => {
+  const filePath = tempFilePath();
+  const backup: StoreData = {
+    version: 1,
+    guilds: { '321': { translations: [], webhookCache: {} } },
+  };
+  fs.writeFileSync(`${filePath}.bak`, JSON.stringify(backup));
+
+  const data = loadStore(filePath);
+
+  assert.deepEqual(data, backup);
+  // main is repaired on disk, so a later save cannot clobber the backup
+  assert.deepEqual(JSON.parse(fs.readFileSync(filePath, 'utf-8')), backup);
+  assert.deepEqual(JSON.parse(fs.readFileSync(`${filePath}.bak`, 'utf-8')), backup);
+});
+
+test('a save after recovery does not destroy the backup', () => {
+  const filePath = tempFilePath();
+  const good: StoreData = {
+    version: 1,
+    guilds: { '654': { translations: [], webhookCache: {} } },
+  };
+  fs.writeFileSync(`${filePath}.bak`, JSON.stringify(good));
+  fs.writeFileSync(filePath, '{ corrupted');
+
+  const recovered = loadStore(filePath);
+  saveStore(filePath, recovered);
+
+  const backupOnDisk = JSON.parse(fs.readFileSync(`${filePath}.bak`, 'utf-8'));
+  assert.deepEqual(backupOnDisk, good);
+});
+
 test('saveStore writes the new data and backs up the previous version', () => {
   const filePath = tempFilePath();
   const first: StoreData = { version: 1, guilds: {} };
