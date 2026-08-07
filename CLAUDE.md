@@ -15,6 +15,8 @@
 - `docs/discord-translation-bot-spec.md` — 기획 및 사양서. 무엇을 만드는지, 왜 그렇게 결정했는지
 - `docs/discord-translation-bot-dev-plan.md` — 개발 계획서. 기술 스택, 데이터 모델, Phase별 구현 순서
 - `docs/discord-translation-bot-preview.html` — UX 미리보기 목업 (역할별 채널 노출 동작 확인용)
+- `docs/superpowers/specs/` — Phase별 상세 설계서. 결정 근거와 배제한 대안까지 기록. 위 두 문서에는 확정 결론만 요약되어 있으므로, "왜 이렇게 했는지"가 필요하면 여기를 볼 것
+- `docs/superpowers/plans/` — Phase별 구현 계획서 (태스크 단위 절차)
 
 ## 기술 스택
 
@@ -51,6 +53,8 @@
 ### 권한 검증 로직은 최소화
 
 명령어 실행 권한은 봇 코드에서 `ADMINISTRATOR`를 하드코딩하지 않습니다. 디스코드 자체의 **명령어별 권한 설정(서버 설정 → 연동 → 봇 앱 → 명령어 권한)** 으로 서버 관리자가 원하는 역할에 위임합니다. 봇 등록 시 기본 권한은 `Manage Server` 수준으로 두고, 최종 조정은 각 서버 관리자에게 맡깁니다.
+
+**이 원칙은 "사용자가 커맨드를 실행할 자격"에만 적용됩니다.** "봇 자신이 대상 채널에서 동작 가능한가"(View Channel / Send Messages / Manage Webhooks 보유 여부)는 별개 문제이며, `/setting register` 시점에 검사해 부족하면 거부합니다. 검사하지 않으면 등록은 성공하고 실제 게시 단계에서 조용히 실패합니다. 사양서 4.2.2 참고.
 
 ### 채널 접근 제어는 봇의 책임이 아님
 

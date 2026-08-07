@@ -51,9 +51,11 @@ discord-translation-bot/
 │   ├── services/
 │   │   ├── translationService.ts # 다중 API 우선순위·failover 로직 (사양서 4.6)
 │   │   ├── webhookService.ts     # 채널별 Webhook 생성/캐싱, 발신자 명의 전송 (사양서 4.4)
-│   │   └── configService.ts      # 설정 조회/변경 비즈니스 로직
+│   │   ├── channelPermissions.ts # 봇의 채널 권한 검사 (사양서 4.2.2)
+│   │   └── configService.ts      # 설정 조회/변경 + 메모리 캐시
 │   ├── store/
 │   │   ├── jsonStore.ts          # JSON 파일 로드/원자적 저장 유틸
+│   │   ├── configPath.ts         # config.json 정식 경로 상수
 │   │   └── config.json           # 실제 설정 데이터 (gitignore 대상)
 │   └── types/
 │       └── index.ts
@@ -97,9 +99,12 @@ discord-translation-bot/
 
 **구현 시 고려사항**
 
-- **로드/저장 전략**: 봇 구동 시 파일 전체를 읽어 메모리에 캐시하고, 슬래시 커맨드로 변경이 발생할 때만 파일에 기록한다. 메시지 이벤트 처리 시에는 메모리 캐시만 참조하므로 파일 I/O가 발생하지 않는다.
+- **로드/저장 전략**: 봇 구동 시 파일 전체를 읽어 메모리에 캐시하고, 슬래시 커맨드로 변경이 발생할 때만 파일에 기록한다. 메시지 이벤트 처리 시에는 메모리 캐시만 참조하므로 파일 I/O가 발생하지 않는다. 캐시는 `configService`가 소유하며 구동 시 `initialize()`로 1회 적재한다.
+- **캐시/디스크 일관성**: 캐시를 먼저 고치고 저장하면 저장 실패 시 메모리와 디스크가 어긋난다. **사본 수정 → 저장 성공 → 캐시 반영** 순서로 처리하고, 저장이 실패하면 캐시를 손대지 않은 채 예외를 전파한다. pm2 단일 프로세스 운영을 전제하므로 프로세스 간 캐시 동기화는 다루지 않는다.
 - **원자적 쓰기**: 쓰기 중 프로세스가 종료되어 파일이 손상되는 것을 막기 위해, 임시 파일에 먼저 기록한 뒤 `fs.rename`으로 교체한다.
-- **타입 안정성**: `types/index.ts`에 위 구조에 대응하는 TypeScript 인터페이스를 정의하고, 파일 로드 시 스키마 유효성을 검증한다.
+- **파일 경로**: `store/configPath.ts`에 `path.join(__dirname, 'config.json')`으로 정의한 상수를 유일한 출처로 삼는다. `process.cwd()` 기준으로 잡으면 pm2 실행 디렉토리에 따라 설정 파일 위치가 달라진다.
+- **타입 안정성**: `types/index.ts`에 위 구조에 대응하는 TypeScript 인터페이스를 정의하고, 파일 로드 시 스키마 유효성을 검증한다. `jsonStore`의 검증은 최상위 구조만 보므로, `configService.initialize()`에서 길드별로 `translations`·`webhookCache` 누락을 채우는 정규화를 수행한다.
+- **설정 ID**: `cfg_` + base36 6자 랜덤(길드 내 충돌 시 재생성). `/setting remove`가 자동완성을 쓰므로 사람이 ID를 읽거나 입력할 일이 없어 순번 카운터를 유지하지 않는다.
 - **버전 필드**: 향후 구조 변경 시 마이그레이션이 가능하도록 최상위에 `version` 필드를 둔다.
 - **보안**: `config.json`에 번역 API 키는 없으나 `webhookToken`(자격증명)이 저장된다. `.gitignore` 필수, 배포 서버에서 `chmod 600`. 토큰을 아예 저장하지 않고 필요 시 `channel.fetchWebhooks()`로 조회/재생성하는 방안은 Phase 4 착수 시 재검토한다.
 - **백업**: 원자적 쓰기(`rename`)로 교체하기 직전에 기존 `config.json`을 `config.json.bak`으로 복사한다. 로드 시 파싱 실패 등 손상이 감지되면 `.bak`으로 폴백한다. 클라우드 업로드는 이번 범위에서 다루지 않는다.
@@ -112,7 +117,7 @@ discord-translation-bot/
 |---|---|---|
 | `/setting register` | 모니터링 채널·출력 채널·타겟 언어를 세트로 등록 | `source-channel`(channel), `target-channel`(channel), `target-language`(string, choices) |
 | `/setting list` | 현재 서버에 등록된 설정 목록 확인 | 없음 |
-| `/setting remove` | 등록된 설정 세트 삭제 | `id`(등록 시 발급된 설정 ID) |
+| `/setting remove` | 등록된 설정 세트 삭제 | `id`(자동완성 — 목록에서 선택) |
 
 - `target-language`의 choices는 DeepL과 Papago가 **공통 지원**하는 10개 언어로 한정한다. 선택지 표시명은 각 언어 자체 표기를 쓴다 — 어느 언어 사용자든 자기 언어를 알아볼 수 있어야 하기 때문이다.
 
@@ -128,7 +133,7 @@ discord-translation-bot/
 - 번역 API 키/우선순위를 다루는 슬래시 커맨드는 없다. 사양서 4.6에 따라 DeepL/Papago 키는 `.env`에 전역 보관하고 우선순위는 코드 상수로 고정하므로, 서버 관리자가 등록·조정할 대상 자체가 없다.
 - 명령어와 파라미터 이름은 모두 **영어**로 작성한다 (예: `/설정`이 아닌 `/setting`). 디스코드 슬래시 커맨드 이름은 소문자와 하이픈(`-`)만 사용하는 것이 관례이다. 표시되는 **설명(description) 문구도 영어**로 작성한다 — 다국어 사용자가 함께 쓰는 서버가 대상이므로 영어를 공통어로 삼는다.
 - 표에 적힌 `/setting register`, `/setting list`, `/setting remove`는 명령어 이름에 공백이 들어가는 것이 아니라, discord.js의 **서브커맨드(Subcommand)** 구조로 구현한다. 최상위 명령어 `setting` 하나를 등록하고, `SlashCommandBuilder`의 `.addSubcommand(...)`로 `register`/`list`/`remove`를 하위 명령으로 추가하는 방식이다. 사용자가 `/setting`까지 입력하면 디스코드 클라이언트가 서브커맨드 자동완성 목록을 보여주며, 그 결과 화면상으로는 `/setting register`처럼 공백이 있는 것처럼 보인다.
-- `/setting` 계열 명령어는 사양서 6.1에 따라 **디스코드 자체 명령어 권한 설정(Integrations)** 으로 실행 가능 역할이 제한되므로, 봇 코드에서 별도의 권한 검증 로직은 최소화한다.
+- `/setting` 계열 명령어는 사양서 6.1에 따라 **디스코드 자체 명령어 권한 설정(Integrations)** 으로 실행 가능 역할이 제한되므로, **사용자의 실행 자격**을 봇 코드에서 검증하지 않는다. 단, **봇 자신이 대상 채널에서 동작 가능한지**는 등록 시점에 검사한다(사양서 4.2.2) — 이는 다른 문제이며 원칙과 충돌하지 않는다.
 - 채널 파라미터는 discord.js의 `ChannelType` 옵션을 사용해 텍스트 채널만 선택 가능하도록 제한한다.
 
 ---
