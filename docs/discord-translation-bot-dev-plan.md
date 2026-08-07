@@ -114,9 +114,19 @@ discord-translation-bot/
 | `/setting list` | 현재 서버에 등록된 설정 목록 확인 | 없음 |
 | `/setting remove` | 등록된 설정 세트 삭제 | `id`(등록 시 발급된 설정 ID) |
 
-- `target-language`의 choices는 DeepL과 Papago가 **공통 지원**하는 10개 언어로 한정한다: 한국어(ko), 영어(en), 일본어(ja), 중국어 간체(zh-CN), 스페인어(es), 프랑스어(fr), 독일어(de), 러시아어(ru), 이탈리아어(it), 인도네시아어(id). 제공자별 코드 표기 차이(예: DeepL의 `EN-US`)는 Phase 3의 `translationService`에서 변환한다.
+- `target-language`의 choices는 DeepL과 Papago가 **공통 지원**하는 10개 언어로 한정한다. 선택지 표시명은 각 언어 자체 표기를 쓴다 — 어느 언어 사용자든 자기 언어를 알아볼 수 있어야 하기 때문이다.
+
+  | 표시명 | 값 | 표시명 | 값 |
+  |---|---|---|---|
+  | 한국어 | `ko` | Français | `fr` |
+  | English | `en` | Deutsch | `de` |
+  | 日本語 | `ja` | Русский | `ru` |
+  | 中文(简体) | `zh-CN` | Italiano | `it` |
+  | Español | `es` | Bahasa Indonesia | `id` |
+
+  제공자별 코드 표기 차이(예: DeepL의 `EN-US`)는 Phase 3의 `translationService`에서 변환한다.
 - 번역 API 키/우선순위를 다루는 슬래시 커맨드는 없다. 사양서 4.6에 따라 DeepL/Papago 키는 `.env`에 전역 보관하고 우선순위는 코드 상수로 고정하므로, 서버 관리자가 등록·조정할 대상 자체가 없다.
-- 명령어와 파라미터 이름은 모두 **영어**로 작성한다 (예: `/설정`이 아닌 `/setting`). 디스코드 슬래시 커맨드 이름은 소문자와 하이픈(`-`)만 사용하는 것이 관례이며, 표시되는 설명(description) 문구는 한국어로 작성해 사용성을 유지한다.
+- 명령어와 파라미터 이름은 모두 **영어**로 작성한다 (예: `/설정`이 아닌 `/setting`). 디스코드 슬래시 커맨드 이름은 소문자와 하이픈(`-`)만 사용하는 것이 관례이다. 표시되는 **설명(description) 문구도 영어**로 작성한다 — 다국어 사용자가 함께 쓰는 서버가 대상이므로 영어를 공통어로 삼는다.
 - 표에 적힌 `/setting register`, `/setting list`, `/setting remove`는 명령어 이름에 공백이 들어가는 것이 아니라, discord.js의 **서브커맨드(Subcommand)** 구조로 구현한다. 최상위 명령어 `setting` 하나를 등록하고, `SlashCommandBuilder`의 `.addSubcommand(...)`로 `register`/`list`/`remove`를 하위 명령으로 추가하는 방식이다. 사용자가 `/setting`까지 입력하면 디스코드 클라이언트가 서브커맨드 자동완성 목록을 보여주며, 그 결과 화면상으로는 `/setting register`처럼 공백이 있는 것처럼 보인다.
 - `/setting` 계열 명령어는 사양서 6.1에 따라 **디스코드 자체 명령어 권한 설정(Integrations)** 으로 실행 가능 역할이 제한되므로, 봇 코드에서 별도의 권한 검증 로직은 최소화한다.
 - 채널 파라미터는 discord.js의 `ChannelType` 옵션을 사용해 텍스트 채널만 선택 가능하도록 제한한다.

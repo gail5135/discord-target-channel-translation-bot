@@ -43,7 +43,8 @@
 
 ### 슬래시 커맨드는 영어, 서브커맨드 구조
 
-- 명령어/파라미터 이름은 영어 소문자+하이픈. 설명(description) 문구만 한국어
+- 명령어/파라미터 이름과 설명(description) 문구 모두 영어. 이름은 소문자+하이픈. 다국어 서버에서 쓰는 봇이므로 영어를 공통어로 삼는다
+- 예외: `target-language`의 선택지 표시명만 각 언어 자체 표기(`한국어`, `English`, `日本語`, `中文(简体)` …). 어느 언어 사용자든 자기 언어를 알아볼 수 있게 하기 위함
 - `/setting register` 같은 형태는 공백이 아니라 `SlashCommandBuilder.addSubcommand()` 구조
 - 명령어: `/setting register|list|remove` (번역 API 관련 슬래시 커맨드는 없음 — 아래 참고)
 
