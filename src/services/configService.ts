@@ -44,15 +44,90 @@ export function initialize(filePath: string = CONFIG_PATH): void {
   cache = normalize(loadStore(filePath));
 }
 
-export function listTranslations(guildId: string): TranslationConfig[] {
+export function listTranslations(guildId: string): readonly TranslationConfig[] {
   return [...(requireCache().guilds[guildId]?.translations ?? [])];
 }
 
 export function findBySourceChannel(
   guildId: string,
   sourceChannelId: string
-): TranslationConfig | undefined {
+): Readonly<TranslationConfig> | undefined {
   return requireCache().guilds[guildId]?.translations.find(
     (translation) => translation.sourceChannelId === sourceChannelId
   );
+}
+
+export interface TranslationInput {
+  sourceChannelId: string;
+  targetChannelId: string;
+  targetLanguage: string;
+}
+
+export interface UpsertResult {
+  setting: Readonly<TranslationConfig>;
+  replaced?: Readonly<TranslationConfig>;
+}
+
+function generateId(existing: TranslationConfig[]): string {
+  const taken = new Set(existing.map((translation) => translation.id));
+  for (;;) {
+    const id = `cfg_${Math.random().toString(36).slice(2, 8).padEnd(6, '0')}`;
+    if (!taken.has(id)) return id;
+  }
+}
+
+/**
+ * 캐시를 먼저 고치고 저장하면, 저장이 실패했을 때 메모리와 디스크가 어긋난 채
+ * 봇이 계속 돈다. 사본에 적용하고 저장이 성공한 뒤에만 캐시를 교체한다.
+ */
+function commit(draft: StoreData): void {
+  saveStore(storePath, draft);
+  cache = draft;
+}
+
+function cloneStore(data: StoreData): StoreData {
+  return JSON.parse(JSON.stringify(data)) as StoreData;
+}
+
+export function upsertTranslation(guildId: string, input: TranslationInput): UpsertResult {
+  const draft = cloneStore(requireCache());
+  const guild = (draft.guilds[guildId] ??= { translations: [], webhookCache: {} });
+
+  const index = guild.translations.findIndex(
+    (translation) => translation.sourceChannelId === input.sourceChannelId
+  );
+  const replaced = index >= 0 ? guild.translations[index] : undefined;
+
+  const setting: TranslationConfig = {
+    id: replaced?.id ?? generateId(guild.translations),
+    sourceChannelId: input.sourceChannelId,
+    targetChannelId: input.targetChannelId,
+    targetLanguage: input.targetLanguage,
+    createdAt: new Date().toISOString(),
+  };
+
+  if (index >= 0) {
+    guild.translations[index] = setting;
+  } else {
+    guild.translations.push(setting);
+  }
+
+  commit(draft);
+  return replaced ? { setting, replaced } : { setting };
+}
+
+export function removeTranslation(
+  guildId: string,
+  id: string
+): Readonly<TranslationConfig> | undefined {
+  const draft = cloneStore(requireCache());
+  const guild = draft.guilds[guildId];
+  if (!guild) return undefined;
+
+  const index = guild.translations.findIndex((translation) => translation.id === id);
+  if (index < 0) return undefined;
+
+  const [removed] = guild.translations.splice(index, 1);
+  commit(draft);
+  return removed;
 }
