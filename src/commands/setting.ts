@@ -213,7 +213,7 @@ async function handleRegister(interaction: ChatInputCommandInteraction): Promise
 
 async function handleList(interaction: ChatInputCommandInteraction): Promise<void> {
   const guildId = interaction.guildId;
-  if (!guildId) {
+  if (!guildId || !interaction.guild) {
     await interaction.reply({
       content: '이 명령어는 서버 안에서만 사용할 수 있습니다.',
       flags: MessageFlags.Ephemeral,
@@ -230,16 +230,21 @@ async function handleList(interaction: ChatInputCommandInteraction): Promise<voi
     return;
   }
 
-  const lines = settings.map((setting) => `• ${describe(interaction, setting)}`);
+  const LIST_LIMIT = 25;
+  const shown = settings.slice(0, LIST_LIMIT);
+  const lines = shown.map((setting) => `• ${describe(interaction, setting)}`);
+  if (settings.length > shown.length) {
+    lines.push(`…and ${settings.length - shown.length} more`);
+  }
   await interaction.reply({
-    content: [`등록된 설정 ${settings.length}개:`, ...lines].join('\n'),
+    content: [`${settings.length} setting(s) registered:`, ...lines].join('\n'),
     flags: MessageFlags.Ephemeral,
   });
 }
 
 async function handleRemove(interaction: ChatInputCommandInteraction): Promise<void> {
   const guildId = interaction.guildId;
-  if (!guildId) {
+  if (!guildId || !interaction.guild) {
     await interaction.reply({
       content: '이 명령어는 서버 안에서만 사용할 수 있습니다.',
       flags: MessageFlags.Ephemeral,
@@ -313,15 +318,23 @@ export async function autocomplete(interaction: AutocompleteInteraction): Promis
       return channel ? `#${channel.name}` : `(삭제됨 ${channelId})`;
     };
 
+    const focused = interaction.options.getFocused().toLowerCase();
+
     const choices = listTranslations(guildId)
-      .slice(0, AUTOCOMPLETE_LIMIT)
       .map((setting) => ({
         name: `${nameOf(setting.sourceChannelId)} → ${nameOf(setting.targetChannelId)} (${languageLabel(setting.targetLanguage)})`.slice(
           0,
           100
         ),
         value: setting.id,
-      }));
+      }))
+      .filter(
+        (choice) =>
+          focused.length === 0 ||
+          choice.name.toLowerCase().includes(focused) ||
+          choice.value.toLowerCase().includes(focused)
+      )
+      .slice(0, AUTOCOMPLETE_LIMIT);
 
     await interaction.respond(choices);
   } catch (error) {
