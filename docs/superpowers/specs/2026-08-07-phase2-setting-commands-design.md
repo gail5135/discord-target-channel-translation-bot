@@ -41,9 +41,9 @@ Phase 2는 이 세 서브커맨드가 실제로 동작하게 만든다. 구체�
 **결정**: 이미 등록된 원본 채널로 `/setting register`를 실행하면 기존 설정을 새 값으로 교체하고, 무엇이 어떻게 바뀌었는지 응답에 명시한다.
 
 ```
-#영어대화의 설정을 변경했습니다.
-  이전: #한글번역 (한국어)
-  변경: #일본어번역 (日本語)
+Updated the setting for #english-chat.
+  Before: #korean-translation (한국어)
+  After: #japanese-translation (日本語)
 ```
 
 **근거**: 타겟 언어나 출력 채널을 바꾸는 것은 흔한 작업이다. 이를 "remove 후 register" 2단계로 강제하면, 중간에 설정이 사라진 상태가 생기고 조작 실수 여지도 커진다.
