@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ChannelType, PermissionFlagsBits } from 'discord.js';
-import { data } from './setting';
+import { data, LANGUAGE_LABELS } from './setting';
 
 test('setting command is named "setting"', () => {
   const json = data.toJSON();
@@ -56,4 +56,17 @@ test('target-language offers a fixed set of choices', () => {
   const language = (register.options ?? []).find((o) => o.name === 'target-language');
   const values = (language?.choices ?? []).map((choice) => choice.value);
   assert.deepEqual(values, ['ko', 'en', 'ja', 'zh-CN', 'es', 'fr', 'de', 'ru', 'it', 'id']);
+});
+
+test('every target-language choice has a display label', () => {
+  const json = data.toJSON();
+  const register = (json.options ?? []).find((option) => option.name === 'register') as {
+    options?: { name: string; choices?: { name: string; value: string }[] }[];
+  };
+  const choices = (register.options ?? []).find((o) => o.name === 'target-language')?.choices ?? [];
+
+  assert.equal(choices.length, Object.keys(LANGUAGE_LABELS).length);
+  for (const choice of choices) {
+    assert.equal(LANGUAGE_LABELS[choice.value], choice.name, `label for ${choice.value}`);
+  }
 });

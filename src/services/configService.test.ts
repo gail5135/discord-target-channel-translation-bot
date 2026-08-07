@@ -290,3 +290,20 @@ test('returned settings are typed readonly so callers cannot corrupt the cache',
   // (즉 readonly가 풀리면) typecheck가 실패한다.
   assert.equal(configService.findBySourceChannel('g1', 's1')?.targetLanguage, 'ja');
 });
+
+test('listTranslations elements are typed readonly', () => {
+  const filePath = tempConfigPath();
+  configService.initialize(filePath);
+  configService.upsertTranslation('g1', {
+    sourceChannelId: 's1',
+    targetChannelId: 't1',
+    targetLanguage: 'ko',
+  });
+
+  const settings = configService.listTranslations('g1');
+
+  // @ts-expect-error — elements are Readonly<TranslationConfig>
+  settings[0].targetLanguage = 'ja';
+
+  assert.equal(settings.length, 1);
+});

@@ -59,6 +59,6 @@ export function saveStore(
   }
 
   const tmpPath = `${filePath}.tmp`;
-  fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2));
+  fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), { mode: 0o600 });
   fs.renameSync(tmpPath, filePath);
 }

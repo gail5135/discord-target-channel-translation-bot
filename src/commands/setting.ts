@@ -77,7 +77,7 @@ export const data = new SlashCommandBuilder()
   );
 
 /** 커맨드 choices와 같은 표시명. 응답에서 코드 대신 사람이 읽는 이름을 쓴다. */
-const LANGUAGE_LABELS: Record<string, string> = {
+export const LANGUAGE_LABELS: Record<string, string> = {
   ko: '한국어',
   en: 'English',
   ja: '日本語',
@@ -105,7 +105,7 @@ function channelLabel(
 
 function describe(
   interaction: ChatInputCommandInteraction,
-  setting: TranslationConfig
+  setting: Readonly<TranslationConfig>
 ): string {
   const source = channelLabel(interaction, setting.sourceChannelId);
   const target = channelLabel(interaction, setting.targetChannelId);
@@ -249,7 +249,7 @@ async function handleRemove(interaction: ChatInputCommandInteraction): Promise<v
 
   const id = interaction.options.getString('id', true);
 
-  let removed: TranslationConfig | undefined;
+  let removed: Readonly<TranslationConfig> | undefined;
   try {
     removed = removeTranslation(guildId, id);
   } catch (error) {

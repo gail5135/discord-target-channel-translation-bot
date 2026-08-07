@@ -10,7 +10,9 @@ function normalizeGuild(raw: unknown): GuildConfig {
   return {
     translations: Array.isArray(candidate.translations) ? candidate.translations : [],
     webhookCache:
-      typeof candidate.webhookCache === 'object' && candidate.webhookCache !== null
+      typeof candidate.webhookCache === 'object' &&
+      candidate.webhookCache !== null &&
+      !Array.isArray(candidate.webhookCache)
         ? candidate.webhookCache
         : {},
   };
@@ -44,7 +46,7 @@ export function initialize(filePath: string = CONFIG_PATH): void {
   cache = normalize(loadStore(filePath));
 }
 
-export function listTranslations(guildId: string): readonly TranslationConfig[] {
+export function listTranslations(guildId: string): readonly Readonly<TranslationConfig>[] {
   return [...(requireCache().guilds[guildId]?.translations ?? [])];
 }
 
