@@ -17,7 +17,7 @@ export async function handleInteraction(interaction: Interaction): Promise<void>
   } catch (error) {
     console.error('[interactionCreate] command handler threw', error);
     const message = {
-      content: '명령 처리 중 오류가 발생했습니다.',
+      content: 'Something went wrong while handling the command.',
       flags: MessageFlags.Ephemeral as const,
     };
     // 이미 응답했다면 followUp을, 아니라면 reply를 써야 한다

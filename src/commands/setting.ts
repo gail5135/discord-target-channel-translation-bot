@@ -100,7 +100,7 @@ function channelLabel(
   channelId: string
 ): string {
   const channel = interaction.guild?.channels.cache.get(channelId);
-  return channel ? `<#${channelId}>` : `(삭제된 채널 ${channelId})`;
+  return channel ? `<#${channelId}>` : `(deleted channel ${channelId})`;
 }
 
 function describe(
@@ -116,7 +116,7 @@ async function handleRegister(interaction: ChatInputCommandInteraction): Promise
   const guildId = interaction.guildId;
   if (!guildId || !interaction.guild) {
     await interaction.reply({
-      content: '이 명령어는 서버 안에서만 사용할 수 있습니다.',
+      content: 'This command can only be used inside a server.',
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -128,7 +128,7 @@ async function handleRegister(interaction: ChatInputCommandInteraction): Promise
 
   if (sourceOption.id === targetOption.id) {
     await interaction.reply({
-      content: '원본 채널과 출력 채널이 같습니다. 서로 다른 채널을 지정해주세요.',
+      content: 'Source and output channels are the same. Please pick two different channels.',
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -137,7 +137,7 @@ async function handleRegister(interaction: ChatInputCommandInteraction): Promise
   const botMember = interaction.guild.members.me;
   if (!botMember) {
     await interaction.reply({
-      content: '봇 정보를 확인하지 못했습니다. 잠시 후 다시 시도해주세요.',
+      content: 'Could not read bot information. Please try again in a moment.',
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -149,7 +149,7 @@ async function handleRegister(interaction: ChatInputCommandInteraction): Promise
   const targetChannel = interaction.guild.channels.cache.get(targetOption.id);
   if (!sourceChannel || !targetChannel) {
     await interaction.reply({
-      content: '채널 정보를 확인하지 못했습니다. 잠시 후 다시 시도해주세요.',
+      content: 'Could not read channel information. Please try again in a moment.',
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -174,10 +174,10 @@ async function handleRegister(interaction: ChatInputCommandInteraction): Promise
   if (problems.length > 0) {
     await interaction.reply({
       content: [
-        '봇에게 필요한 권한이 없어 등록하지 못했습니다.',
+        'Cannot register — the bot is missing permissions:',
         ...problems.map((problem) => `• ${problem}`),
         '',
-        '채널 권한을 부여한 뒤 다시 시도해주세요.',
+        'Grant the permissions above and try again.',
       ].join('\n'),
       flags: MessageFlags.Ephemeral,
     });
@@ -194,7 +194,7 @@ async function handleRegister(interaction: ChatInputCommandInteraction): Promise
   } catch (error) {
     console.error('[setting] failed to save translation config', error);
     await interaction.reply({
-      content: '설정을 저장하지 못했습니다. 서버 로그를 확인해주세요.',
+      content: 'Failed to save the setting. Check the server logs.',
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -202,11 +202,11 @@ async function handleRegister(interaction: ChatInputCommandInteraction): Promise
 
   const content = result.replaced
     ? [
-        `<#${sourceChannel.id}>의 설정을 변경했습니다.`,
-        `  이전: ${channelLabel(interaction, result.replaced.targetChannelId)} (${languageLabel(result.replaced.targetLanguage)})`,
-        `  변경: ${channelLabel(interaction, result.setting.targetChannelId)} (${languageLabel(result.setting.targetLanguage)})`,
+        `Updated the setting for <#${sourceChannel.id}>.`,
+        `  Before: ${channelLabel(interaction, result.replaced.targetChannelId)} (${languageLabel(result.replaced.targetLanguage)})`,
+        `  After: ${channelLabel(interaction, result.setting.targetChannelId)} (${languageLabel(result.setting.targetLanguage)})`,
       ].join('\n')
-    : `설정을 등록했습니다.\n  ${describe(interaction, result.setting)}`;
+    : `Setting registered.\n  ${describe(interaction, result.setting)}`;
 
   await interaction.reply({ content, flags: MessageFlags.Ephemeral });
 }
@@ -215,7 +215,7 @@ async function handleList(interaction: ChatInputCommandInteraction): Promise<voi
   const guildId = interaction.guildId;
   if (!guildId || !interaction.guild) {
     await interaction.reply({
-      content: '이 명령어는 서버 안에서만 사용할 수 있습니다.',
+      content: 'This command can only be used inside a server.',
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -224,7 +224,7 @@ async function handleList(interaction: ChatInputCommandInteraction): Promise<voi
   const settings = listTranslations(guildId);
   if (settings.length === 0) {
     await interaction.reply({
-      content: '등록된 설정이 없습니다. `/setting register`로 등록해주세요.',
+      content: 'No settings registered yet. Use `/setting register` to add one.',
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -246,7 +246,7 @@ async function handleRemove(interaction: ChatInputCommandInteraction): Promise<v
   const guildId = interaction.guildId;
   if (!guildId || !interaction.guild) {
     await interaction.reply({
-      content: '이 명령어는 서버 안에서만 사용할 수 있습니다.',
+      content: 'This command can only be used inside a server.',
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -260,7 +260,7 @@ async function handleRemove(interaction: ChatInputCommandInteraction): Promise<v
   } catch (error) {
     console.error('[setting] failed to save translation config', error);
     await interaction.reply({
-      content: '설정을 저장하지 못했습니다. 서버 로그를 확인해주세요.',
+      content: 'Failed to save the setting. Check the server logs.',
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -268,14 +268,14 @@ async function handleRemove(interaction: ChatInputCommandInteraction): Promise<v
 
   if (!removed) {
     await interaction.reply({
-      content: '해당 설정을 찾지 못했습니다. 이미 삭제되었을 수 있습니다.',
+      content: 'Setting not found. It may already have been removed.',
       flags: MessageFlags.Ephemeral,
     });
     return;
   }
 
   await interaction.reply({
-    content: `설정을 삭제했습니다.\n  ${describe(interaction, removed)}`,
+    content: `Setting removed.\n  ${describe(interaction, removed)}`,
     flags: MessageFlags.Ephemeral,
   });
 }
@@ -295,7 +295,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     default:
       console.error(`[setting] unknown subcommand: ${subcommand}`);
       await interaction.reply({
-        content: '알 수 없는 명령입니다.',
+        content: 'Unknown command.',
         flags: MessageFlags.Ephemeral,
       });
   }
@@ -315,7 +315,7 @@ export async function autocomplete(interaction: AutocompleteInteraction): Promis
     // 자동완성 목록에서는 채널 멘션이 렌더링되지 않으므로 채널 이름을 직접 넣는다.
     const nameOf = (channelId: string): string => {
       const channel = interaction.guild?.channels.cache.get(channelId);
-      return channel ? `#${channel.name}` : `(삭제됨 ${channelId})`;
+      return channel ? `#${channel.name}` : `(deleted ${channelId})`;
     };
 
     const focused = interaction.options.getFocused().toLowerCase();
