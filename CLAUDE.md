@@ -83,7 +83,13 @@ Developer Portal에서:
 4. 출력 채널 게시 — Webhook 생성/캐싱, 원 발신자 명의 전송, 원문 링크
 5. 안정화 및 배포 — 에러 핸들링, pm2, 통합 테스트
 
-현재 **Phase 1 완료** 상태입니다. discord.js 연결(`src/index.ts`), JSON 저장소(`src/store/jsonStore.ts`), `/setting` 커맨드 정의와 등록 스크립트가 구현되어 있습니다. 커맨드의 실제 처리 로직은 아직 없습니다(Phase 2).
+현재 **Phase 2 완료** 상태입니다(실제 디스코드에서 수동 검증까지 통과). 구현된 것:
+
+- discord.js 연결과 인터랙션 라우팅 — `src/index.ts`, `src/events/interactionCreate.ts`
+- JSON 저장소와 메모리 캐시 — `src/store/jsonStore.ts`, `src/store/configPath.ts`, `src/services/configService.ts`
+- `/setting register|list|remove` 전체 동작 (자동완성, 봇 권한 검증 포함) — `src/commands/setting.ts`, `src/services/channelPermissions.ts`
+
+아직 없는 것: 메시지 감지와 번역(Phase 3), Webhook 게시(Phase 4). `src/index.ts`의 인텐트는 `Guilds`뿐이므로 Phase 3에서 `GuildMessages`와 `MessageContent` 추가가 필요합니다.
 
 ## 참고 리포지토리
 
