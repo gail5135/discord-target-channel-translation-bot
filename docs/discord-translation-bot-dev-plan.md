@@ -29,9 +29,9 @@ Discord API를 다루는 라이브러리는 언어별로 여러 종류가 있으
 | 실행기 | `ts-node` | 별도 빌드 단계 없이 TS 파일을 바로 실행 (기존 봇과 동일 방식) — 빌드 단계가 없으므로 `ts-node`/`typescript`는 devDependencies가 아니라 **런타임 의존성**(dependencies)으로 둔다 |
 | 프로세스 매니저 | `pm2` | 크래시 시 자동 재시작, 로그 관리 |
 | 설정 저장소 | JSON 파일 (Node.js 내장 `fs` 모듈) | 사양서 4.2.1 참고 — 별도 DB 없이 설정값 영구 저장. 네이티브 모듈 컴파일이 불필요해 e2-micro 배포에 유리 |
-| 번역 API 클라이언트 | `axios` 또는 Node 내장 `fetch` | DeepL, Papago 두 API만 호출 (Google 제외, 사양서 4.6) |
+| 번역 API 클라이언트 | Node 내장 `fetch` | DeepL(1순위), Google Translate(2순위) 두 API만 호출 (Papago는 무료 제공 종료로 제외, 사양서 4.6). 테스트에서 가짜 응답을 넣을 수 있도록 `fetch`를 주입 가능하게 둔다 |
 | 언어 감지 | `franc` 또는 각 번역 API의 자체 언어 감지 기능 | 우선 각 번역 API가 제공하는 언어 자동 감지를 활용하고, 필요 시 별도 라이브러리 도입 검토 |
-| 환경변수 관리 | `dotenv` | 봇 토큰 및 번역 API 키(DeepL/Papago, 전역 공용)를 `.env`로 관리 (서버별 설정값만 4.2.1에 따라 JSON 파일로 분리) |
+| 환경변수 관리 | `dotenv` | 봇 토큰 및 번역 API 키(DeepL/Google, 전역 공용)를 `.env`로 관리 (서버별 설정값만 4.2.1에 따라 JSON 파일로 분리) |
 
 ---
 
@@ -60,7 +60,7 @@ discord-translation-bot/
 │   └── types/
 │       └── index.ts
 ├── ecosystem.config.js          # pm2 설정
-├── .env                         # DISCORD_TOKEN, DEEPL_API_KEY, PAPAGO_CLIENT_ID/SECRET 등 민감 정보
+├── .env                         # DISCORD_TOKEN, DEEPL_API_KEY, GOOGLE_TRANSLATE_API_KEY 등 민감 정보
 ├── tsconfig.json
 └── package.json
 ```
@@ -119,7 +119,7 @@ discord-translation-bot/
 | `/setting list` | 현재 서버에 등록된 설정 목록 확인 | 없음 |
 | `/setting remove` | 등록된 설정 세트 삭제 | `id`(자동완성 — 목록에서 선택) |
 
-- `target-language`의 choices는 DeepL과 Papago가 **공통 지원**하는 10개 언어로 한정한다. 선택지 표시명은 각 언어 자체 표기를 쓴다 — 어느 언어 사용자든 자기 언어를 알아볼 수 있어야 하기 때문이다.
+- `target-language`의 choices는 **DeepL이 지원하는 언어**를 기준으로 10개로 한정한다(Google은 130개 이상을 지원하므로 2순위 보완에는 제약이 없다). 선택지 표시명은 각 언어 자체 표기를 쓴다 — 어느 언어 사용자든 자기 언어를 알아볼 수 있어야 하기 때문이다.
 
   | 표시명 | 값 | 표시명 | 값 |
   |---|---|---|---|
@@ -130,7 +130,7 @@ discord-translation-bot/
   | Español | `es` | Bahasa Indonesia | `id` |
 
   제공자별 코드 표기 차이(예: DeepL의 `EN-US`)는 Phase 3의 `translationService`에서 변환한다.
-- 번역 API 키/우선순위를 다루는 슬래시 커맨드는 없다. 사양서 4.6에 따라 DeepL/Papago 키는 `.env`에 전역 보관하고 우선순위는 코드 상수로 고정하므로, 서버 관리자가 등록·조정할 대상 자체가 없다.
+- 번역 API 키/우선순위를 다루는 슬래시 커맨드는 없다. 사양서 4.6에 따라 DeepL/Google 키는 `.env`에 전역 보관하고 우선순위는 코드 상수로 고정하므로, 서버 관리자가 등록·조정할 대상 자체가 없다.
 - 명령어와 파라미터 이름은 모두 **영어**로 작성한다 (예: `/설정`이 아닌 `/setting`). 디스코드 슬래시 커맨드 이름은 소문자와 하이픈(`-`)만 사용하는 것이 관례이다. 표시되는 **설명(description) 문구도 영어**로 작성한다 — 다국어 사용자가 함께 쓰는 서버가 대상이므로 영어를 공통어로 삼는다.
 - 표에 적힌 `/setting register`, `/setting list`, `/setting remove`는 명령어 이름에 공백이 들어가는 것이 아니라, discord.js의 **서브커맨드(Subcommand)** 구조로 구현한다. 최상위 명령어 `setting` 하나를 등록하고, `SlashCommandBuilder`의 `.addSubcommand(...)`로 `register`/`list`/`remove`를 하위 명령으로 추가하는 방식이다. 사용자가 `/setting`까지 입력하면 디스코드 클라이언트가 서브커맨드 자동완성 목록을 보여주며, 그 결과 화면상으로는 `/setting register`처럼 공백이 있는 것처럼 보인다.
 - `/setting` 계열 명령어는 사양서 6.1에 따라 **디스코드 자체 명령어 권한 설정(Integrations)** 으로 실행 가능 역할이 제한되므로, **사용자의 실행 자격**을 봇 코드에서 검증하지 않는다. 단, **봇 자신이 대상 채널에서 동작 가능한지**는 등록 시점에 검사한다(사양서 4.2.2) — 이는 다른 문제이며 원칙과 충돌하지 않는다.
@@ -156,7 +156,9 @@ discord-translation-bot/
 ### Phase 3 — 번역 파이프라인 구현
 - `messageCreate` 이벤트에서 모니터링 채널 여부 판별
 - 봇/웹훅이 작성한 메시지(`author.bot` 또는 `webhookId` 존재) 무시 (루프 방지, 사양서 4.1)
-- 언어 감지 → 타겟 언어와 동일하면 번역 생략, 다르면 `.env`의 DeepL/Papago 키로 고정 우선순위(deepl → papago) 순차 호출 → 실패 시 failover (사양서 4.6)
+- `.env`의 DeepL/Google 키로 고정 우선순위(deepl → google) 순차 호출 → 실패 시 failover (사양서 4.6). 언어 감지는 API 응답에 맡기고, 감지 언어가 타겟과 같으면 번역문 대신 원문을 게시한다
+- 채널별 직렬 큐로 처리해 같은 채널의 번역문 순서를 보장한다. 전부 실패 시 출력 채널에 알리되 채널당 10분 쿨다운을 건다
+- Phase 3은 봇 명의로 게시한다. Webhook 전송과 첨부파일 전달은 Phase 4에서 교체·추가한다
 - 번역 실패(전체 API 소진) 시 처리 정책 구현
 
 ### Phase 4 — 출력 채널 게시 구현
@@ -193,7 +195,7 @@ discord-translation-bot/
 | 리스크 | 영향 | 대응 방안 |
 |---|---|---|
 | GCP e2-micro의 낮은 RAM(약 1GB)에서 다수 메시지 이벤트 동시 처리 시 성능 저하 | 번역 지연, 프로세스 다운 | 메시지 큐잉/배치 처리 검토 |
-| 번역 API(DeepL/Papago) 쿼터 초과 | 번역 실패 증가 | 우선순위 failover(사양서 4.6)로 완화, 콘솔에서 쿼터 사용량 주기적 확인 |
+| 번역 API(DeepL/Google) 쿼터 초과 | 번역 실패 증가 | 우선순위 failover(사양서 4.6)로 완화, 콘솔에서 쿼터 사용량 주기적 확인 |
 | Webhook 생성 실패(권한 부족 등) | 발신자 명의 표시 불가 | Manage Webhooks 권한 재확인 절차를 배포 체크리스트에 포함 |
 | 번역 API 키 유출 리스크 | 키 오·남용 시 쿼터 소진/과금 | 키를 `.env`에만 보관하고 `.gitignore` 포함, 서버 파일 권한(chmod 600) 유지 |
 | 설정 JSON 파일 손상 또는 유실 | 전체 설정 초기화, 봇 동작 불능 | 원자적 쓰기(임시 파일 + rename) 적용, 로드 시 유효성 검증 후 실패 시 로컬 백업본(`.bak`)으로 폴백 |
