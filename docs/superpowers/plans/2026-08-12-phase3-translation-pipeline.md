@@ -286,7 +286,7 @@ export function createDeepLProvider(
 - [ ] **Step 5: 테스트 통과 확인**
 
 Run: `npm test`
-Expected: PASS — 기존 38개 + 이번 9개 = 47개 통과
+Expected: PASS — 기존 38개 + 이번 10개 = 48개 통과
 
 - [ ] **Step 6: 타입 체크**
 
@@ -512,7 +512,7 @@ export function createGoogleProvider(
 - [ ] **Step 4: 테스트 통과 확인**
 
 Run: `npm test`
-Expected: PASS — 총 54개 통과 (38 + Task 1의 9 + 이번 7)
+Expected: PASS — 총 55개 통과 (38 + Task 1의 10 + 이번 7)
 
 - [ ] **Step 5: 타입 체크**
 
@@ -743,7 +743,7 @@ export function translate(text: string, targetLanguage: string): Promise<Transla
 - [ ] **Step 4: 테스트 통과 확인**
 
 Run: `npm test`
-Expected: PASS — 총 60개 통과 (54 + 이번 6)
+Expected: PASS — 총 61개 통과 (55 + 이번 6)
 
 - [ ] **Step 5: 타입 체크**
 
@@ -913,7 +913,7 @@ export function enqueue(key: string, task: () => Promise<void>): void {
 - [ ] **Step 4: 테스트 통과 확인**
 
 Run: `npm test`
-Expected: PASS — 총 64개 통과 (60 + 이번 4)
+Expected: PASS — 총 65개 통과 (61 + 이번 4)
 
 - [ ] **Step 5: 타입 체크**
 
@@ -1045,7 +1045,7 @@ export function splitForDiscord(text: string, suffix: string): string[] {
 - [ ] **Step 4: 테스트 통과 확인**
 
 Run: `npm test`
-Expected: PASS — 총 70개 통과 (64 + 이번 6)
+Expected: PASS — 총 71개 통과 (65 + 이번 6)
 
 - [ ] **Step 5: 타입 체크**
 
@@ -1075,7 +1075,7 @@ git commit -m "feat: add discord message chunking with suffix"
   - `splitForDiscord(text, suffix): string[]` — `src/services/messageChunks.ts`
 - Produces: `handleMessage(message: Message): void` — `src/events/messageCreate.ts`
 
-이 태스크는 **단위 테스트를 추가하지 않는다.** discord.js `Message` 목킹 비용이 크고 실익이 낮으며, 판단 로직은 Task 1~5의 모듈에 있다. 여기 남는 것은 필터링과 조립이다. 검증은 Task 7의 수동 시나리오로 한다. 기존 70개 테스트는 계속 통과해야 한다.
+이 태스크는 **단위 테스트를 추가하지 않는다.** discord.js `Message` 목킹 비용이 크고 실익이 낮으며, 판단 로직은 Task 1~5의 모듈에 있다. 여기 남는 것은 필터링과 조립이다. 검증은 Task 7의 수동 시나리오로 한다. 기존 71개 테스트는 계속 통과해야 한다.
 
 - [ ] **Step 1: 메시지 핸들러 작성**
 
@@ -1210,7 +1210,7 @@ client.login(token);
 - [ ] **Step 3: 테스트와 타입 체크**
 
 Run: `npm test`
-Expected: PASS — 총 70개 통과 (새 테스트 없음, 기존이 깨지지 않았는지 확인)
+Expected: PASS — 총 71개 통과 (새 테스트 없음, 기존이 깨지지 않았는지 확인)
 
 Run: `npm run typecheck`
 Expected: 에러 없이 종료
@@ -1263,7 +1263,7 @@ Expected: `[translation] providers: deepl -> google` (또는 설정된 키에 �
 
 ## Phase 3 완료 조건
 
-- `npm test` — 총 70개 테스트 통과 (Phase 2의 38개 + deepl 9 + google 7 + translationService 6 + messageQueue 4 + messageChunks 6)
+- `npm test` — 총 71개 테스트 통과 (Phase 2의 38개 + deepl 10 + google 7 + translationService 6 + messageQueue 4 + messageChunks 6)
 - `npm run typecheck` — exit 0
 - Task 7의 수동 시나리오 8개 전부 통과
 - Phase 4(Webhook 게시, 첨부파일 전달)는 별도 plan에서 다룬다
