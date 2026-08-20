@@ -19,14 +19,8 @@ export interface TranslationConfig {
   createdAt: string; // ISO 8601
 }
 
-export interface WebhookCacheEntry {
-  webhookId: string;
-  webhookToken: string;
-}
-
 export interface GuildConfig {
   translations: TranslationConfig[];
-  webhookCache: Record<string, WebhookCacheEntry>; // key: targetChannelId
 }
 
 export interface StoreData {

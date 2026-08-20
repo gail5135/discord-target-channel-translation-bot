@@ -24,7 +24,7 @@ test('loadStore returns existing valid data unchanged', () => {
   const filePath = tempFilePath();
   const seed: StoreData = {
     version: 1,
-    guilds: { '123': { translations: [], webhookCache: {} } },
+    guilds: { '123': { translations: [] } },
   };
   fs.writeFileSync(filePath, JSON.stringify(seed));
 
@@ -37,7 +37,7 @@ test('loadStore falls back to the .bak file when the main file is corrupted', ()
   const filePath = tempFilePath();
   const backup: StoreData = {
     version: 1,
-    guilds: { '456': { translations: [], webhookCache: {} } },
+    guilds: { '456': { translations: [] } },
   };
   fs.writeFileSync(`${filePath}.bak`, JSON.stringify(backup));
   fs.writeFileSync(filePath, '{ not valid json');
@@ -59,7 +59,7 @@ test('loadStore recovers from .bak when the main file is missing, and preserves 
   const filePath = tempFilePath();
   const backup: StoreData = {
     version: 1,
-    guilds: { '321': { translations: [], webhookCache: {} } },
+    guilds: { '321': { translations: [] } },
   };
   fs.writeFileSync(`${filePath}.bak`, JSON.stringify(backup));
 
@@ -75,7 +75,7 @@ test('a save after recovery does not destroy the backup', () => {
   const filePath = tempFilePath();
   const good: StoreData = {
     version: 1,
-    guilds: { '654': { translations: [], webhookCache: {} } },
+    guilds: { '654': { translations: [] } },
   };
   fs.writeFileSync(`${filePath}.bak`, JSON.stringify(good));
   fs.writeFileSync(filePath, '{ corrupted');
@@ -94,7 +94,7 @@ test('saveStore writes the new data and backs up the previous version', () => {
 
   const second: StoreData = {
     version: 1,
-    guilds: { '789': { translations: [], webhookCache: {} } },
+    guilds: { '789': { translations: [] } },
   };
   saveStore(filePath, second);
 

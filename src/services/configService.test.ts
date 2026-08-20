@@ -39,7 +39,6 @@ test('initialize loads existing translations into the cache', () => {
             createdAt: '2026-08-07T00:00:00Z',
           },
         ],
-        webhookCache: {},
       },
     },
   };
@@ -92,7 +91,6 @@ test('findBySourceChannel locates a setting by its source channel', () => {
             createdAt: '2026-08-07T00:00:00Z',
           },
         ],
-        webhookCache: {},
       },
     },
   });
@@ -118,7 +116,6 @@ test('listTranslations returns a copy that cannot mutate the cache', () => {
             createdAt: '2026-08-07T00:00:00Z',
           },
         ],
-        webhookCache: {},
       },
     },
   });

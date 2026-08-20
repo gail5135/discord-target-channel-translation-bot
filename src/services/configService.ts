@@ -9,12 +9,6 @@ function normalizeGuild(raw: unknown): GuildConfig {
   const candidate = (typeof raw === 'object' && raw !== null ? raw : {}) as Partial<GuildConfig>;
   return {
     translations: Array.isArray(candidate.translations) ? candidate.translations : [],
-    webhookCache:
-      typeof candidate.webhookCache === 'object' &&
-      candidate.webhookCache !== null &&
-      !Array.isArray(candidate.webhookCache)
-        ? candidate.webhookCache
-        : {},
   };
 }
 
@@ -93,7 +87,7 @@ function cloneStore(data: StoreData): StoreData {
 
 export function upsertTranslation(guildId: string, input: TranslationInput): UpsertResult {
   const draft = cloneStore(requireCache());
-  const guild = (draft.guilds[guildId] ??= { translations: [], webhookCache: {} });
+  const guild = (draft.guilds[guildId] ??= { translations: [] });
 
   const index = guild.translations.findIndex(
     (translation) => translation.sourceChannelId === input.sourceChannelId
