@@ -53,3 +53,18 @@ test('falls back when stripping leaves nothing usable', () => {
 test('falls back to Unknown when the fallback is also unusable', () => {
   assert.equal(sanitizeWebhookUsername('discord', 'clyde'), 'Unknown');
 });
+
+test('does not leave a lone surrogate when truncating', () => {
+  const result = sanitizeWebhookUsername('🎉'.repeat(60), 'fallback');
+
+  assert.ok(result.length <= 80);
+  assert.ok(!/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/.test(result), 'lone high surrogate');
+});
+
+test('truncates after stripping, not before', () => {
+  // 'discord'를 먼저 지우지 않으면 잘라낸 결과에 금지어가 남을 수 있다
+  const result = sanitizeWebhookUsername('discord' + 'a'.repeat(80), 'fallback');
+
+  assert.equal(result.length, 80);
+  assert.ok(!/discord/i.test(result));
+});

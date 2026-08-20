@@ -73,10 +73,9 @@ async function postAsBot(channel: TextChannel, author: string, body: string, lin
 }
 
 async function postTranslation(message: Message, channel: TextChannel, body: string): Promise<void> {
-  const author = sanitizeWebhookUsername(
-    message.member?.displayName ?? '',
-    message.author.username
-  );
+  const rawAuthor = message.member?.displayName ?? message.author.username;
+  // Webhook username 제약은 전송할 때만 적용된다. 폴백 경로의 본문 텍스트에는 원본 이름을 쓴다.
+  const author = sanitizeWebhookUsername(rawAuthor, message.author.username);
   const link = sourceLink(message);
   const botUserId = message.client.user?.id;
 
@@ -87,13 +86,16 @@ async function postTranslation(message: Message, channel: TextChannel, body: str
   if (!webhook) {
     // 미러가 조용히 멈추는 것보다 이름이 덜 정확하더라도 계속 도는 편이 낫다 (설계서 2.7)
     console.error(`[messageCreate] posting as bot; no webhook for channel ${channel.id}`);
-    await postAsBot(channel, author, body, link);
+    await postAsBot(channel, rawAuthor, body, link);
     return;
   }
 
-  const avatarURL = message.author.displayAvatarURL();
+  // 서버 별명(name)과 짝을 맞춘다 — 전역 아바타를 쓰면 "서버 별명 + 다른 얼굴"이 된다.
+  const avatarURL = message.member?.displayAvatarURL() ?? message.author.displayAvatarURL();
 
-  for (const chunk of splitForDiscord(body, link)) {
+  const chunks = splitForDiscord(body, link);
+
+  for (const [index, chunk] of chunks.entries()) {
     try {
       await webhook.send({
         content: chunk,
@@ -108,6 +110,9 @@ async function postTranslation(message: Message, channel: TextChannel, body: str
       );
       // 관리자가 Webhook을 지운 경우가 대표적이다. 캐시만 비우면 다음 메시지가 재생성한다.
       invalidateWebhook(channel.id);
+      // 첫 조각에서 실패했으면 아직 아무것도 게시되지 않았으므로 봇 명의로 되살린다.
+      // 중간에서 실패했으면 다시 보내는 것이 중복 게시가 되므로 포기한다.
+      if (index === 0) await postAsBot(channel, rawAuthor, body, link);
       return;
     }
   }
