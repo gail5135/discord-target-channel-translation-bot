@@ -103,7 +103,10 @@ test('a rejected task does not produce an unhandled rejection', async () => {
   enqueue('channel-x', async () => {
     throw new Error('nope');
   });
-  await drain();
+  // drain()은 마이크로태스크만 20틱 넘긴다. Node는 그 틱의 마이크로태스크 큐가 완전히
+  // 빈 뒤에야 unhandledRejection을 발생시키므로, drain()만으로는 진짜 누수도 감지되지 않는다
+  // (실측: 누수가 있는 구현도 drain() 뒤 unhandled === false였다가 매크로태스크 한 틱 뒤에 true가 됐다).
+  await new Promise((resolve) => setImmediate(resolve));
 
   process.off('unhandledRejection', onUnhandled);
   assert.equal(unhandled, false);

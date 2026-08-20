@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { splitForDiscord } from './messageChunks';
+import { splitForDiscord, MAX_CONTENT } from './messageChunks';
 
 const LIMIT = 2000;
 const SUFFIX = '\nhttps://discord.com/channels/111111111111111111/222222222222222222/333333333333333333';
@@ -54,4 +54,18 @@ test('empty text yields a single chunk holding just the suffix', () => {
   const chunks = splitForDiscord('', SUFFIX);
 
   assert.deepEqual(chunks, [SUFFIX]);
+});
+
+test('does not split a surrogate pair across chunks', () => {
+  // 이모지가 2000자 경계에 정확히 걸치도록 배치한다
+  const text = 'a'.repeat(MAX_CONTENT - 1) + '🎉' + 'b'.repeat(100);
+
+  const chunks = splitForDiscord(text, SUFFIX);
+
+  for (const chunk of chunks) {
+    assert.ok(chunk.length <= MAX_CONTENT);
+    assert.ok(!/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/.test(chunk), 'lone high surrogate');
+    assert.ok(!/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(chunk), 'lone low surrogate');
+  }
+  assert.ok(chunks.join('').includes('🎉'));
 });
