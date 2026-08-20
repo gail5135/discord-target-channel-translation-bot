@@ -38,33 +38,45 @@ export function describeError(error: unknown): string {
 }
 
 /**
- * 채널별 Webhook 캐시. 디스크에 저장하지 않는다 —
- * Webhook 토큰은 id와 함께 있으면 봇 인증 없이 그 채널에 게시할 수 있는 자격증명이다.
- * 재시작 시 다시 확보하는 비용(채널당 1회 API 호출)이 훨씬 싸다.
+ * 채널별 Webhook 캐시. 해결된 값이 아니라 **진행 중인 Promise**를 담는다 —
+ * 같은 출력 채널을 쓰는 원본 채널이 둘이면(사양서 4.1의 N:1) 큐가 원본 기준으로만
+ * 직렬화하므로 두 호출이 동시에 캐시를 비켜 갈 수 있고, 그러면 Webhook이 두 개 생긴다.
+ *
+ * 디스크에 저장하지 않는 이유는 설계서 2.1 참고 — 토큰은 만료 없는 자격증명이다.
  */
-const cache = new Map<string, WebhookLike>();
+const cache = new Map<string, Promise<WebhookLike | undefined>>();
 
-export async function getWebhook(
+async function acquire(channel: WebhookHost, botUserId: string): Promise<WebhookLike> {
+  const webhooks = await channel.fetchWebhooks();
+  // 남이 만든 Webhook을 빌려 쓰면 그 소유자가 지웠을 때 조용히 깨진다. 봇 소유만 쓴다.
+  const own = webhooks.find((w) => w.owner?.id === botUserId);
+  return own ?? (await channel.createWebhook({ name: WEBHOOK_NAME }));
+}
+
+export function getWebhook(
   channel: WebhookHost,
   botUserId: string
 ): Promise<WebhookLike | undefined> {
   const cached = cache.get(channel.id);
   if (cached) return cached;
 
-  try {
-    const webhooks = await channel.fetchWebhooks();
-    // 남이 만든 Webhook을 빌려 쓰면 그 소유자가 지웠을 때 조용히 깨진다. 봇 소유만 쓴다.
-    const own = webhooks.find((w) => w.owner?.id === botUserId);
-    const webhook = own ?? (await channel.createWebhook({ name: WEBHOOK_NAME }));
-    cache.set(channel.id, webhook);
-    return webhook;
-  } catch (error) {
-    // 실패는 캐시하지 않는다. 권한이 복구되면 다음 메시지가 다시 시도한다.
+  const pending = acquire(channel, botUserId).catch((error: unknown) => {
     console.error(
       `[webhook] could not obtain a webhook for channel ${channel.id}: ${describeError(error)}`
     );
     return undefined;
-  }
+  });
+
+  cache.set(channel.id, pending);
+
+  // 실패는 캐시하지 않는다. 다만 그 사이 더 새로운 호출이 항목을 갈아끼웠다면 그쪽은 건드리면 안 된다.
+  void pending.then((webhook) => {
+    if (webhook === undefined && cache.get(channel.id) === pending) {
+      cache.delete(channel.id);
+    }
+  });
+
+  return pending;
 }
 
 /**

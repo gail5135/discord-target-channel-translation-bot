@@ -78,11 +78,12 @@ test('ignores webhooks owned by someone else', async () => {
 });
 
 test('ignores webhooks with no owner', async () => {
-  const { host } = fakeChannel('c1', [webhook('ownerless', null)]);
+  const { host, counts } = fakeChannel('c1', [webhook('ownerless', null)]);
 
   const result = await getWebhook(host, BOT_ID);
 
   assert.equal(result?.id, 'created-c1');
+  assert.equal(counts.create, 1);
 });
 
 test('caches so the second call does not hit the api', async () => {
@@ -153,5 +154,36 @@ test('a failed lookup is not cached', async () => {
 
   assert.equal(await getWebhook(channel, BOT_ID), undefined);
   shouldFail = false;
+  assert.equal((await getWebhook(channel, BOT_ID))?.id, 'recovered');
+});
+
+test('concurrent calls for one channel create only one webhook', async () => {
+  const { host, counts } = fakeChannel('c1', []);
+
+  // await 없이 동시에 호출한다 — N:1 구성에서 실제로 일어나는 형태
+  const [first, second] = await Promise.all([
+    getWebhook(host, BOT_ID),
+    getWebhook(host, BOT_ID),
+  ]);
+
+  assert.equal(counts.create, 1, 'a second webhook must not be created');
+  assert.equal(counts.fetch, 1);
+  assert.equal(first?.id, second?.id);
+});
+
+test('a failed concurrent lookup is still not cached', async () => {
+  let shouldFail = true;
+  const channel: WebhookHost = {
+    id: 'c1',
+    fetchWebhooks: async () => {
+      if (shouldFail) throw new Error('Missing Permissions');
+      return { find: () => webhook('recovered', BOT_ID) };
+    },
+    createWebhook: async () => webhook('never', BOT_ID),
+  };
+
+  await Promise.all([getWebhook(channel, BOT_ID), getWebhook(channel, BOT_ID)]);
+  shouldFail = false;
+
   assert.equal((await getWebhook(channel, BOT_ID))?.id, 'recovered');
 });
