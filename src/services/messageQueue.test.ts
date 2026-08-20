@@ -72,6 +72,27 @@ test('a task that throws does not block later tasks on the same key', async () =
   assert.deepEqual(order, ['boom', 'after']);
 });
 
+test('tasks beyond the depth cap are dropped rather than queued', async () => {
+  const started: number[] = [];
+  const gate = deferred();
+
+  // 첫 작업이 게이트를 잡고 있는 동안 상한을 넘겨 투입한다
+  for (let i = 0; i < 60; i += 1) {
+    enqueue('channel-cap', async () => {
+      started.push(i);
+      if (i === 0) await gate.promise;
+    });
+  }
+
+  gate.resolve();
+  // drain()의 20 마이크로태스크 틱은 체인 50단 깊이를 다 소진하기에 부족하다(실측 필요 틱 수가 훨씬 큼).
+  // 매크로태스크 한 틱을 기다리면 그 사이에 예약되는 마이크로태스크가 전부 처리된다.
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(started.length, 50, 'only up to the cap should run');
+  assert.equal(started[0], 0);
+});
+
 test('a rejected task does not produce an unhandled rejection', async () => {
   let unhandled = false;
   const onUnhandled = (): void => {
