@@ -69,3 +69,37 @@ test('does not split a surrogate pair across chunks', () => {
   }
   assert.ok(chunks.join('').includes('🎉'));
 });
+
+test('does not split a url that follows a newline', () => {
+  const url = `https://cdn.discordapp.com/attachments/${'1'.repeat(19)}/${'2'.repeat(19)}/image.png?ex=${'a'.repeat(8)}&is=${'b'.repeat(8)}&hm=${'c'.repeat(64)}`;
+  // 경계가 URL 한가운데 떨어지도록 본문 길이를 맞춘다
+  const text = 'a'.repeat(MAX_CONTENT - 100) + '\n' + url;
+
+  const chunks = splitForDiscord(text, SUFFIX);
+
+  const whole = chunks.some((chunk) => chunk.includes(url));
+  assert.ok(whole, 'the url must survive intact in one chunk');
+});
+
+test('still respects the limit when cutting at a newline', () => {
+  const text = ('x'.repeat(300) + '\n').repeat(20);
+
+  const chunks = splitForDiscord(text, SUFFIX);
+
+  for (const chunk of chunks) {
+    assert.ok(chunk.length <= MAX_CONTENT, `chunk of ${chunk.length} exceeds ${MAX_CONTENT}`);
+  }
+  assert.equal(chunks.join('').slice(0, -SUFFIX.length), text);
+});
+
+test('falls back to a hard cut when no newline is near the boundary', () => {
+  // 줄바꿈이 맨 앞에만 있으면 상한의 절반보다 앞이라 쓰지 않는다
+  const text = 'a\n' + 'b'.repeat(MAX_CONTENT * 2);
+
+  const chunks = splitForDiscord(text, SUFFIX);
+
+  assert.ok(chunks[0].length > MAX_CONTENT / 2, 'must not produce a tiny first chunk');
+  for (const chunk of chunks) {
+    assert.ok(chunk.length <= MAX_CONTENT);
+  }
+});
