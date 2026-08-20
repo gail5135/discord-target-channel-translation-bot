@@ -50,8 +50,9 @@ discord-translation-bot/
 │   │   └── messageCreate.ts     # 모니터링 채널 메시지 감지 → 번역 파이프라인 진입점
 │   ├── services/
 │   │   ├── translationService.ts # 다중 API 우선순위·failover 로직 (사양서 4.6)
-│   │   ├── webhookService.ts     # 채널별 Webhook 생성/캐싱, 발신자 명의 전송 (사양서 4.4)
+│   │   ├── webhookService.ts     # 채널별 Webhook 확보 + 메모리 캐시 + 무효화 (사양서 4.4)
 │   │   ├── channelPermissions.ts # 봇의 채널 권한 검사 (사양서 4.2.2)
+│   │   ├── webhookIdentity.ts    # Webhook username 제약에 맞춘 이름 정제 (사양서 4.4)
 │   │   └── configService.ts      # 설정 조회/변경 + 메모리 캐시
 │   ├── store/
 │   │   ├── jsonStore.ts          # JSON 파일 로드/원자적 저장 유틸
@@ -82,20 +83,16 @@ discord-translation-bot/
           "id": "cfg_01",                      // /setting remove 에서 사용할 식별자
           "sourceChannelId": "111111111111111111",
           "targetChannelId": "222222222222222222",
-          "targetLanguage": "ko",              // ISO 639-1
+          "targetLanguage": "ko",              // 봇 내부 언어 코드 (LanguageCode 유니온)
           "createdAt": "2026-07-30T09:00:00Z"
         }
-      ],
-      "webhookCache": {                        // 사양서 4.4 - 출력 채널별 Webhook (webhookToken은 자격증명)
-        "222222222222222222": {
-          "webhookId": "...",
-          "webhookToken": "..."
-        }
-      }
+      ]
     }
   }
 }
 ```
+
+> Webhook 정보는 이 파일에 저장하지 않는다. 초안에는 `webhookCache` 필드가 있었으나 Phase 4에서 **메모리 캐시만 두기로 확정**해 삭제했다. 근거는 `docs/superpowers/specs/2026-08-20-phase4-webhook-identity-design.md` §2.1·§2.2.
 
 **구현 시 고려사항**
 
@@ -103,10 +100,10 @@ discord-translation-bot/
 - **캐시/디스크 일관성**: 캐시를 먼저 고치고 저장하면 저장 실패 시 메모리와 디스크가 어긋난다. **사본 수정 → 저장 성공 → 캐시 반영** 순서로 처리하고, 저장이 실패하면 캐시를 손대지 않은 채 예외를 전파한다. pm2 단일 프로세스 운영을 전제하므로 프로세스 간 캐시 동기화는 다루지 않는다.
 - **원자적 쓰기**: 쓰기 중 프로세스가 종료되어 파일이 손상되는 것을 막기 위해, 임시 파일에 먼저 기록한 뒤 `fs.rename`으로 교체한다.
 - **파일 경로**: `store/configPath.ts`에 `path.join(__dirname, 'config.json')`으로 정의한 상수를 유일한 출처로 삼는다. `process.cwd()` 기준으로 잡으면 pm2 실행 디렉토리에 따라 설정 파일 위치가 달라진다.
-- **타입 안정성**: `types/index.ts`에 위 구조에 대응하는 TypeScript 인터페이스를 정의하고, 파일 로드 시 스키마 유효성을 검증한다. `jsonStore`의 검증은 최상위 구조만 보므로, `configService.initialize()`에서 길드별로 `translations`·`webhookCache` 누락을 채우는 정규화를 수행한다.
+- **타입 안정성**: `types/index.ts`에 위 구조에 대응하는 TypeScript 인터페이스를 정의하고, 파일 로드 시 스키마 유효성을 검증한다. `jsonStore`의 검증은 최상위 구조만 보므로, `configService.initialize()`에서 길드별로 `translations` 누락을 빈 배열로 채우는 정규화를 수행한다.
 - **설정 ID**: `cfg_` + base36 6자 랜덤(길드 내 충돌 시 재생성). `/setting remove`가 자동완성을 쓰므로 사람이 ID를 읽거나 입력할 일이 없어 순번 카운터를 유지하지 않는다.
 - **버전 필드**: 향후 구조 변경 시 마이그레이션이 가능하도록 최상위에 `version` 필드를 둔다.
-- **보안**: `config.json`에 번역 API 키는 없으나 `webhookToken`(자격증명)이 저장된다. `.gitignore` 필수, 배포 서버에서 `chmod 600`. 토큰을 아예 저장하지 않고 필요 시 `channel.fetchWebhooks()`로 조회/재생성하는 방안은 Phase 4 착수 시 재검토한다.
+- **보안**: `config.json`에 **자격증명이 없다.** 번역 API 키는 `.env`에 있고, Webhook 토큰은 Phase 4에서 저장하지 않기로 확정했다 — 채널별로 `fetchWebhooks()`로 조회하고 없으면 생성해 메모리에만 캐싱하며, 재시작 시 다시 확보한다. 담기는 것은 서버별 채널·언어 설정뿐이지만 공개할 정보는 아니므로 `.gitignore`와 파일 권한 `0o600`(쓰기 시 코드가 적용)은 유지한다.
 - **백업**: 원자적 쓰기(`rename`)로 교체하기 직전에 기존 `config.json`을 `config.json.bak`으로 복사한다. 로드 시 파싱 실패 등 손상이 감지되면 `.bak`으로 폴백한다. 클라우드 업로드는 이번 범위에서 다루지 않는다.
 
 ---
@@ -162,10 +159,13 @@ discord-translation-bot/
 - 번역 실패(전체 API 소진) 시 처리 정책 구현
 
 ### Phase 4 — 출력 채널 게시 구현
-- 채널별 Webhook 생성/캐싱 로직 (`webhookService.ts`)
-- 원 발신자 이름/아바타로 Webhook 메시지 전송
-- 첨부파일 URL 그대로 전달, 2000자 초과 시 여러 메시지로 분할 전송 (사양서 4.4)
-- 메시지 링크(`https://discord.com/channels/{guild}/{channel}/{message}`) 삽입, 분할 전송 시 마지막 조각에만 첨부 (사양서 4.5)
+- 채널별 Webhook 확보(`fetchWebhooks` → 없으면 `createWebhook`) + **메모리 캐시**. 토큰을 디스크에 저장하지 않는다 (`webhookService.ts`)
+- 원 발신자 이름/아바타로 Webhook 메시지 전송. 본문 첫 줄의 `**작성자**` 접두는 제거(이름이 헤더로 올라가므로 중복)
+- Webhook `username` 제약(1~80자, `discord`/`clyde` 불가)에 맞춘 이름 정제 (`webhookIdentity.ts`)
+- 첨부파일 URL을 본문 뒤에 텍스트로 덧붙임(재업로드 없음 — egress). **본문 없이 첨부만 있는 메시지도 전달**하며 이때 번역 API는 호출하지 않는다
+- Webhook 확보 실패 시 봇 명의로 폴백, 전송 실패 시 캐시 무효화로 자가 치유 (사양서 4.4)
+- 2000자 분할과 원문 링크는 Phase 3의 `splitForDiscord`를 그대로 재사용 (사양서 4.5)
+- `GuildConfig.webhookCache`와 `WebhookCacheEntry` 타입 삭제 — 쓰지 않기로 확정된 필드
 
 ### Phase 5 — 안정화 및 배포
 - 에러 핸들링/로깅 정비 (API 실패, 권한 부족, Webhook 생성 실패 등 케이스별 대응)
