@@ -17,7 +17,7 @@ import {
   SOURCE_CHANNEL_PERMISSIONS,
   TARGET_CHANNEL_PERMISSIONS,
 } from '../services/channelPermissions';
-import type { TranslationConfig } from '../types';
+import type { LanguageCode, TranslationConfig } from '../types';
 
 export const data = new SlashCommandBuilder()
   .setName('setting')
@@ -77,7 +77,7 @@ export const data = new SlashCommandBuilder()
   );
 
 /** 커맨드 choices와 같은 표시명. 응답에서 코드 대신 사람이 읽는 이름을 쓴다. */
-export const LANGUAGE_LABELS: Record<string, string> = {
+export const LANGUAGE_LABELS: Record<LanguageCode, string> = {
   ko: '한국어',
   en: 'English',
   ja: '日本語',
@@ -91,7 +91,10 @@ export const LANGUAGE_LABELS: Record<string, string> = {
 };
 
 function languageLabel(code: string): string {
-  return LANGUAGE_LABELS[code] ?? code;
+  // config.json은 손으로 편집할 수 있으므로(사양서 4.2.1) 런타임 값이 LanguageCode가 아닐 수 있다.
+  return Object.prototype.hasOwnProperty.call(LANGUAGE_LABELS, code)
+    ? LANGUAGE_LABELS[code as LanguageCode]
+    : code;
 }
 
 /** 채널이 아직 존재하면 멘션으로, 삭제됐으면 그 사실을 드러낸다. */

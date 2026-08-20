@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ChannelType, PermissionFlagsBits } from 'discord.js';
 import { data, LANGUAGE_LABELS } from './setting';
+import type { LanguageCode } from '../types';
 
 test('setting command is named "setting"', () => {
   const json = data.toJSON();
@@ -67,6 +68,6 @@ test('every target-language choice has a display label', () => {
 
   assert.equal(choices.length, Object.keys(LANGUAGE_LABELS).length);
   for (const choice of choices) {
-    assert.equal(LANGUAGE_LABELS[choice.value], choice.name, `label for ${choice.value}`);
+    assert.equal(LANGUAGE_LABELS[choice.value as LanguageCode], choice.name, `label for ${choice.value}`);
   }
 });
