@@ -25,6 +25,19 @@ export interface WebhookHost {
 const WEBHOOK_NAME = 'Translation Bot';
 
 /**
+ * REST 오류 객체를 그대로 로그에 넘기면 안 된다 — @discordjs/rest가 요청 URL을
+ * 통째로 담아두는데, Webhook 요청 URL에는 토큰이 들어 있다(설계서 2.1).
+ * 식별에 필요한 것만 뽑아 쓴다.
+ */
+export function describeError(error: unknown): string {
+  if (error instanceof Error) {
+    const code = (error as { code?: unknown }).code;
+    return code === undefined ? error.message : `${error.message} (code ${String(code)})`;
+  }
+  return String(error);
+}
+
+/**
  * 채널별 Webhook 캐시. 디스크에 저장하지 않는다 —
  * Webhook 토큰은 id와 함께 있으면 봇 인증 없이 그 채널에 게시할 수 있는 자격증명이다.
  * 재시작 시 다시 확보하는 비용(채널당 1회 API 호출)이 훨씬 싸다.
@@ -47,7 +60,9 @@ export async function getWebhook(
     return webhook;
   } catch (error) {
     // 실패는 캐시하지 않는다. 권한이 복구되면 다음 메시지가 다시 시도한다.
-    console.error(`[webhook] could not obtain a webhook for channel ${channel.id}`, error);
+    console.error(
+      `[webhook] could not obtain a webhook for channel ${channel.id}: ${describeError(error)}`
+    );
     return undefined;
   }
 }

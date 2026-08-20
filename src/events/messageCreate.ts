@@ -4,7 +4,12 @@ import { AllProvidersFailedError, translate } from '../services/translationServi
 import { enqueue } from '../services/messageQueue';
 import { splitForDiscord } from '../services/messageChunks';
 import { sanitizeWebhookUsername } from '../services/webhookIdentity';
-import { getWebhook, invalidateWebhook, type WebhookHost } from '../services/webhookService';
+import {
+  describeError,
+  getWebhook,
+  invalidateWebhook,
+  type WebhookHost,
+} from '../services/webhookService';
 
 /** 장애 중 출력 채널이 실패 알림으로 도배되지 않도록 채널당 재알림 간격을 둔다 */
 const FAILURE_NOTICE_COOLDOWN_MS = 10 * 60 * 1000;
@@ -98,7 +103,9 @@ async function postTranslation(message: Message, channel: TextChannel, body: str
         allowedMentions: { parse: [] },
       });
     } catch (error) {
-      console.error('[messageCreate] webhook send failed', error);
+      console.error(
+        `[messageCreate] webhook send failed for channel ${channel.id}: ${describeError(error)}`
+      );
       // 관리자가 Webhook을 지운 경우가 대표적이다. 캐시만 비우면 다음 메시지가 재생성한다.
       invalidateWebhook(channel.id);
       return;
