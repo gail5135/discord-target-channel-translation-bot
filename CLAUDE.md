@@ -90,13 +90,14 @@ Developer Portal에서:
 4. 출력 채널 게시 — Webhook 생성/캐싱, 원 발신자 명의 전송, 원문 링크
 5. 안정화 및 배포 — 에러 핸들링, pm2, 통합 테스트
 
-현재 **Phase 2 완료** 상태입니다(실제 디스코드에서 수동 검증까지 통과). 구현된 것:
+현재 **Phase 3 완료** 상태입니다(수동 검증 전). 구현된 것:
 
-- discord.js 연결과 인터랙션 라우팅 — `src/index.ts`, `src/events/interactionCreate.ts`
-- JSON 저장소와 메모리 캐시 — `src/store/jsonStore.ts`, `src/store/configPath.ts`, `src/services/configService.ts`
-- `/setting register|list|remove` 전체 동작 (자동완성, 봇 권한 검증 포함) — `src/commands/setting.ts`, `src/services/channelPermissions.ts`
+- discord.js 연결과 인터랙션·메시지 라우팅 — `src/index.ts`, `src/events/`
+- JSON 저장소와 메모리 캐시 — `src/store/`, `src/services/configService.ts`
+- `/setting register|list|remove` 전체 동작 — `src/commands/setting.ts`
+- 번역 파이프라인 — `src/services/providers/`(DeepL·Google), `translationService.ts`(failover), `messageQueue.ts`(채널별 직렬), `messageChunks.ts`(2000자 분할), `events/messageCreate.ts`
 
-아직 없는 것: 메시지 감지와 번역(Phase 3), Webhook 게시(Phase 4). `src/index.ts`의 인텐트는 `Guilds`뿐이므로 Phase 3에서 `GuildMessages`와 `MessageContent` 추가가 필요합니다.
+아직 없는 것: Webhook을 통한 원 발신자 명의 게시와 첨부파일 전달(Phase 4), pm2 배포(Phase 5). 현재는 봇 명의로 게시하며 본문이 없는 메시지는 건너뛴다.
 
 ## 참고 리포지토리
 
