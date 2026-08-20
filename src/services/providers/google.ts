@@ -1,10 +1,11 @@
+import type { LanguageCode } from '../../types';
 import type { FetchLike, TranslationProvider, TranslationResult } from './types';
 
 /**
  * 봇 내부 코드 → Google 코드. 대부분 동일하지만, 지원 목록을 명시해두면
  * 오타나 미지원 언어가 API 호출 전에 걸린다.
  */
-const TO_GOOGLE: Record<string, string> = {
+const TO_GOOGLE: Record<LanguageCode, string> = {
   ko: 'ko',
   en: 'en',
   ja: 'ja',
@@ -54,14 +55,17 @@ export function createGoogleProvider(
   return {
     name: 'google',
     async translate(text: string, targetLanguage: string): Promise<TranslationResult> {
-      const target = TO_GOOGLE[targetLanguage];
+      // config.json은 손으로 편집할 수 있으므로(사양서 4.2.1) 런타임 값이 LanguageCode가 아닐 수 있다.
+      const target = Object.prototype.hasOwnProperty.call(TO_GOOGLE, targetLanguage)
+        ? TO_GOOGLE[targetLanguage as LanguageCode]
+        : undefined;
       if (!target) {
         throw new Error(`google: unsupported target language "${targetLanguage}"`);
       }
 
-      const response = await fetchImpl(`${ENDPOINT}?key=${encodeURIComponent(apiKey)}`, {
+      const response = await fetchImpl(ENDPOINT, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-goog-api-key': apiKey },
         body: JSON.stringify({ q: text, target, format: 'text' }),
         signal: AbortSignal.timeout(TIMEOUT_MS),
       });

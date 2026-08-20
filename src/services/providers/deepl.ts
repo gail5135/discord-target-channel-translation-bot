@@ -1,7 +1,8 @@
+import type { LanguageCode } from '../../types';
 import type { FetchLike, TranslationProvider, TranslationResult } from './types';
 
 /** 봇 내부 코드 → DeepL 타겟 코드. DeepL은 대문자를 요구하고 EN은 폐기되어 EN-US를 써야 한다. */
-const TO_DEEPL: Record<string, string> = {
+const TO_DEEPL: Record<LanguageCode, string> = {
   ko: 'KO',
   en: 'EN-US',
   ja: 'JA',
@@ -52,7 +53,10 @@ export function createDeepLProvider(
   return {
     name: 'deepl',
     async translate(text: string, targetLanguage: string): Promise<TranslationResult> {
-      const target = TO_DEEPL[targetLanguage];
+      // config.json은 손으로 편집할 수 있으므로(사양서 4.2.1) 런타임 값이 LanguageCode가 아닐 수 있다.
+      const target = Object.prototype.hasOwnProperty.call(TO_DEEPL, targetLanguage)
+        ? TO_DEEPL[targetLanguage as LanguageCode]
+        : undefined;
       if (!target) {
         throw new Error(`deepl: unsupported target language "${targetLanguage}"`);
       }

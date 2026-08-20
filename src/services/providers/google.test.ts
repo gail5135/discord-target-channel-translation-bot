@@ -41,7 +41,7 @@ test('translate decodes HTML entities in the result', async () => {
   assert.equal(result.text, 'it\'s & "ok"');
 });
 
-test('translate sends the api key as a query parameter', async () => {
+test('translate sends the api key as a header', async () => {
   const { impl, calls } = fakeFetch(200, {
     data: { translations: [{ translatedText: 'hi', detectedSourceLanguage: 'ko' }] },
   });
@@ -49,7 +49,9 @@ test('translate sends the api key as a query parameter', async () => {
 
   await provider.translate('안녕', 'en');
 
-  assert.match(calls[0].url, /[?&]key=secret/);
+  const headers = calls[0].init?.headers as Record<string, string>;
+  assert.equal(headers['X-goog-api-key'], 'secret');
+  assert.ok(!calls[0].url.includes('secret'), 'key must not appear in the url');
 });
 
 test('translate sends the target language in the body', async () => {
