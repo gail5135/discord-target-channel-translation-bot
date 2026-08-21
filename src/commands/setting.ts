@@ -5,6 +5,7 @@ import {
   MessageFlags,
   type AutocompleteInteraction,
   type ChatInputCommandInteraction,
+  type Guild,
 } from 'discord.js';
 import {
   listTranslations,
@@ -90,6 +91,32 @@ export const LANGUAGE_LABELS: Record<LanguageCode, string> = {
   id: 'Bahasa Indonesia',
 };
 
+/** 설정 관련 응답은 전부 ephemeral이다 — 실행한 사람만 보면 된다. */
+async function replyEphemeral(
+  interaction: ChatInputCommandInteraction,
+  content: string
+): Promise<void> {
+  await interaction.reply({ content, flags: MessageFlags.Ephemeral });
+}
+
+const GUILD_ONLY = 'This command can only be used inside a server.';
+const SAVE_FAILED = 'Failed to save the setting. Check the server logs.';
+
+/**
+ * 세 서브커맨드가 모두 같은 길드 전용 검사를 한다.
+ * guildId와 guild를 함께 돌려주는 이유는 guildId만으로는 interaction.guild가
+ * 좁혀지지 않아 호출부마다 두 번째 검사가 남기 때문이다.
+ */
+async function requireGuild(
+  interaction: ChatInputCommandInteraction
+): Promise<{ guildId: string; guild: Guild } | undefined> {
+  if (interaction.guildId && interaction.guild) {
+    return { guildId: interaction.guildId, guild: interaction.guild };
+  }
+  await replyEphemeral(interaction, GUILD_ONLY);
+  return undefined;
+}
+
 function languageLabel(code: string): string {
   // config.json은 손으로 편집할 수 있으므로(사양서 4.2.1) 런타임 값이 LanguageCode가 아닐 수 있다.
   return Object.prototype.hasOwnProperty.call(LANGUAGE_LABELS, code)
@@ -97,64 +124,81 @@ function languageLabel(code: string): string {
     : code;
 }
 
+/**
+ * 멘션 표기와 이름 표기 모두 같은 길드 캐시 조회를 쓴다. 자동완성 목록에서는 채널
+ * 멘션이 렌더링되지 않아 형식만 갈리므로, 조회와 삭제된 채널 문구는 여기서만 관리한다.
+ */
+function lookupChannel(
+  interaction: ChatInputCommandInteraction | AutocompleteInteraction,
+  channelId: string
+): { name: string } | undefined {
+  return interaction.guild?.channels.cache.get(channelId);
+}
+
+function deletedChannelLabel(channelId: string): string {
+  return `(deleted channel ${channelId})`;
+}
+
 /** 채널이 아직 존재하면 멘션으로, 삭제됐으면 그 사실을 드러낸다. */
-function channelLabel(
+function channelMention(
   interaction: ChatInputCommandInteraction | AutocompleteInteraction,
   channelId: string
 ): string {
-  const channel = interaction.guild?.channels.cache.get(channelId);
-  return channel ? `<#${channelId}>` : `(deleted channel ${channelId})`;
+  return lookupChannel(interaction, channelId)
+    ? `<#${channelId}>`
+    : deletedChannelLabel(channelId);
+}
+
+/** 자동완성 목록용. 멘션이 렌더링되지 않으므로 채널 이름을 직접 넣는다. */
+function channelName(
+  interaction: ChatInputCommandInteraction | AutocompleteInteraction,
+  channelId: string
+): string {
+  const channel = lookupChannel(interaction, channelId);
+  return channel ? `#${channel.name}` : deletedChannelLabel(channelId);
 }
 
 function describe(
   interaction: ChatInputCommandInteraction,
   setting: Readonly<TranslationConfig>
 ): string {
-  const source = channelLabel(interaction, setting.sourceChannelId);
-  const target = channelLabel(interaction, setting.targetChannelId);
+  const source = channelMention(interaction, setting.sourceChannelId);
+  const target = channelMention(interaction, setting.targetChannelId);
   return `${source} → ${target} (${languageLabel(setting.targetLanguage)})`;
 }
 
 async function handleRegister(interaction: ChatInputCommandInteraction): Promise<void> {
-  const guildId = interaction.guildId;
-  if (!guildId || !interaction.guild) {
-    await interaction.reply({
-      content: 'This command can only be used inside a server.',
-      flags: MessageFlags.Ephemeral,
-    });
-    return;
-  }
+  const context = await requireGuild(interaction);
+  if (!context) return;
+  const { guildId, guild } = context;
 
   const sourceOption = interaction.options.getChannel('source-channel', true);
   const targetOption = interaction.options.getChannel('target-channel', true);
   const targetLanguage = interaction.options.getString('target-language', true);
 
   if (sourceOption.id === targetOption.id) {
-    await interaction.reply({
-      content: 'Source and output channels are the same. Please pick two different channels.',
-      flags: MessageFlags.Ephemeral,
-    });
+    await replyEphemeral(
+      interaction,
+      'Source and output channels are the same. Please pick two different channels.'
+    );
     return;
   }
 
-  const botMember = interaction.guild.members.me;
+  const botMember = guild.members.me;
   if (!botMember) {
-    await interaction.reply({
-      content: 'Could not read bot information. Please try again in a moment.',
-      flags: MessageFlags.Ephemeral,
-    });
+    await replyEphemeral(interaction, 'Could not read bot information. Please try again in a moment.');
     return;
   }
 
   // getChannel의 반환 타입은 permissionsFor가 없는 형태를 포함하므로,
   // 길드 캐시에서 실제 채널 객체를 다시 얻는다.
-  const sourceChannel = interaction.guild.channels.cache.get(sourceOption.id);
-  const targetChannel = interaction.guild.channels.cache.get(targetOption.id);
+  const sourceChannel = guild.channels.cache.get(sourceOption.id);
+  const targetChannel = guild.channels.cache.get(targetOption.id);
   if (!sourceChannel || !targetChannel) {
-    await interaction.reply({
-      content: 'Could not read channel information. Please try again in a moment.',
-      flags: MessageFlags.Ephemeral,
-    });
+    await replyEphemeral(
+      interaction,
+      'Could not read channel information. Please try again in a moment.'
+    );
     return;
   }
 
@@ -175,15 +219,15 @@ async function handleRegister(interaction: ChatInputCommandInteraction): Promise
   }
 
   if (problems.length > 0) {
-    await interaction.reply({
-      content: [
+    await replyEphemeral(
+      interaction,
+      [
         'Cannot register — the bot is missing permissions:',
         ...problems.map((problem) => `• ${problem}`),
         '',
         'Grant the permissions above and try again.',
-      ].join('\n'),
-      flags: MessageFlags.Ephemeral,
-    });
+      ].join('\n')
+    );
     return;
   }
 
@@ -196,40 +240,28 @@ async function handleRegister(interaction: ChatInputCommandInteraction): Promise
     });
   } catch (error) {
     console.error('[setting] failed to save translation config', error);
-    await interaction.reply({
-      content: 'Failed to save the setting. Check the server logs.',
-      flags: MessageFlags.Ephemeral,
-    });
+    await replyEphemeral(interaction, SAVE_FAILED);
     return;
   }
 
   const content = result.replaced
     ? [
         `Updated the setting for <#${sourceChannel.id}>.`,
-        `  Before: ${channelLabel(interaction, result.replaced.targetChannelId)} (${languageLabel(result.replaced.targetLanguage)})`,
-        `  After: ${channelLabel(interaction, result.setting.targetChannelId)} (${languageLabel(result.setting.targetLanguage)})`,
+        `  Before: ${channelMention(interaction, result.replaced.targetChannelId)} (${languageLabel(result.replaced.targetLanguage)})`,
+        `  After: ${channelMention(interaction, result.setting.targetChannelId)} (${languageLabel(result.setting.targetLanguage)})`,
       ].join('\n')
     : `Setting registered.\n  ${describe(interaction, result.setting)}`;
 
-  await interaction.reply({ content, flags: MessageFlags.Ephemeral });
+  await replyEphemeral(interaction, content);
 }
 
 async function handleList(interaction: ChatInputCommandInteraction): Promise<void> {
-  const guildId = interaction.guildId;
-  if (!guildId || !interaction.guild) {
-    await interaction.reply({
-      content: 'This command can only be used inside a server.',
-      flags: MessageFlags.Ephemeral,
-    });
-    return;
-  }
+  const context = await requireGuild(interaction);
+  if (!context) return;
 
-  const settings = listTranslations(guildId);
+  const settings = listTranslations(context.guildId);
   if (settings.length === 0) {
-    await interaction.reply({
-      content: 'No settings registered yet. Use `/setting register` to add one.',
-      flags: MessageFlags.Ephemeral,
-    });
+    await replyEphemeral(interaction, 'No settings registered yet. Use `/setting register` to add one.');
     return;
   }
 
@@ -239,48 +271,30 @@ async function handleList(interaction: ChatInputCommandInteraction): Promise<voi
   if (settings.length > shown.length) {
     lines.push(`…and ${settings.length - shown.length} more`);
   }
-  await interaction.reply({
-    content: [`${settings.length} setting(s) registered:`, ...lines].join('\n'),
-    flags: MessageFlags.Ephemeral,
-  });
+  await replyEphemeral(interaction, [`${settings.length} setting(s) registered:`, ...lines].join('\n'));
 }
 
 async function handleRemove(interaction: ChatInputCommandInteraction): Promise<void> {
-  const guildId = interaction.guildId;
-  if (!guildId || !interaction.guild) {
-    await interaction.reply({
-      content: 'This command can only be used inside a server.',
-      flags: MessageFlags.Ephemeral,
-    });
-    return;
-  }
+  const context = await requireGuild(interaction);
+  if (!context) return;
 
   const id = interaction.options.getString('id', true);
 
   let removed: Readonly<TranslationConfig> | undefined;
   try {
-    removed = removeTranslation(guildId, id);
+    removed = removeTranslation(context.guildId, id);
   } catch (error) {
     console.error('[setting] failed to save translation config', error);
-    await interaction.reply({
-      content: 'Failed to save the setting. Check the server logs.',
-      flags: MessageFlags.Ephemeral,
-    });
+    await replyEphemeral(interaction, SAVE_FAILED);
     return;
   }
 
   if (!removed) {
-    await interaction.reply({
-      content: 'Setting not found. It may already have been removed.',
-      flags: MessageFlags.Ephemeral,
-    });
+    await replyEphemeral(interaction, 'Setting not found. It may already have been removed.');
     return;
   }
 
-  await interaction.reply({
-    content: `Setting removed.\n  ${describe(interaction, removed)}`,
-    flags: MessageFlags.Ephemeral,
-  });
+  await replyEphemeral(interaction, `Setting removed.\n  ${describe(interaction, removed)}`);
 }
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -297,10 +311,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       return;
     default:
       console.error(`[setting] unknown subcommand: ${subcommand}`);
-      await interaction.reply({
-        content: 'Unknown command.',
-        flags: MessageFlags.Ephemeral,
-      });
+      await replyEphemeral(interaction, 'Unknown command.');
   }
 }
 
@@ -315,17 +326,11 @@ export async function autocomplete(interaction: AutocompleteInteraction): Promis
       return;
     }
 
-    // 자동완성 목록에서는 채널 멘션이 렌더링되지 않으므로 채널 이름을 직접 넣는다.
-    const nameOf = (channelId: string): string => {
-      const channel = interaction.guild?.channels.cache.get(channelId);
-      return channel ? `#${channel.name}` : `(deleted ${channelId})`;
-    };
-
     const focused = interaction.options.getFocused().toLowerCase();
 
     const choices = listTranslations(guildId)
       .map((setting) => ({
-        name: `${nameOf(setting.sourceChannelId)} → ${nameOf(setting.targetChannelId)} (${languageLabel(setting.targetLanguage)})`.slice(
+        name: `${channelName(interaction, setting.sourceChannelId)} → ${channelName(interaction, setting.targetChannelId)} (${languageLabel(setting.targetLanguage)})`.slice(
           0,
           100
         ),
