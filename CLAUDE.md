@@ -90,14 +90,17 @@ Developer Portal에서:
 4. 출력 채널 게시 — Webhook 생성/캐싱, 원 발신자 명의 전송, 원문 링크
 5. 안정화 및 배포 — 에러 핸들링, pm2, 통합 테스트
 
-현재 **Phase 3 완료** 상태입니다(2026-08-20 실제 디스코드에서 수동 검증 통과 — 번역, 동일 언어 원문 유지, 연속 전송 순서 보장, 멘션 재알림 차단을 확인). 구현된 것:
+현재 **Phase 4 완료** 상태입니다(수동 검증 전). 구현된 것:
 
 - discord.js 연결과 인터랙션·메시지 라우팅 — `src/index.ts`, `src/events/`
 - JSON 저장소와 메모리 캐시 — `src/store/`, `src/services/configService.ts`
 - `/setting register|list|remove` 전체 동작 — `src/commands/setting.ts`
 - 번역 파이프라인 — `src/services/providers/`(DeepL·Google), `translationService.ts`(failover), `messageQueue.ts`(채널별 직렬), `messageChunks.ts`(2000자 분할), `events/messageCreate.ts`
+- **원 발신자 명의 게시** — `webhookService.ts`(채널별 Webhook 확보·메모리 캐시), `webhookIdentity.ts`(username 정제). 첨부파일은 링크로 전달하며 본문 없는 메시지도 게시한다
 
-아직 없는 것: Webhook을 통한 원 발신자 명의 게시와 첨부파일 전달(Phase 4), pm2 배포(Phase 5). 현재는 봇 명의로 게시하며 본문이 없는 메시지는 건너뛴다.
+아직 없는 것: pm2 배포와 에러 핸들링 정비(Phase 5).
+
+**로그에 REST 오류 객체를 그대로 넘기지 마세요.** `@discordjs/rest`가 요청 URL을 통째로 담는데 Webhook 요청 URL에는 토큰이 들어 있습니다. Webhook 관련 오류는 `webhookService.describeError()`를 거쳐 출력합니다.
 
 ## 참고 리포지토리
 
