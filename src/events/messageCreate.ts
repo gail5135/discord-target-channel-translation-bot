@@ -10,11 +10,12 @@ import {
   invalidateWebhook,
   type WebhookHost,
 } from '../services/webhookService';
+import { createCooldown } from '../services/cooldown';
 
 /** 장애 중 출력 채널이 실패 알림으로 도배되지 않도록 채널당 재알림 간격을 둔다 */
 const FAILURE_NOTICE_COOLDOWN_MS = 10 * 60 * 1000;
-const lastFailureNotice = new Map<string, number>();
-const lastUnavailableLog = new Map<string, number>();
+const failureNotice = createCooldown(FAILURE_NOTICE_COOLDOWN_MS);
+const unavailableLog = createCooldown(FAILURE_NOTICE_COOLDOWN_MS);
 
 function sourceLink(message: Message): string {
   return `\nhttps://discord.com/channels/${message.guildId}/${message.channelId}/${message.id}`;
@@ -38,16 +39,12 @@ function resolveOutputChannel(message: Message, targetChannelId: string): TextCh
 
 /** 채널이 사라진 상태가 지속되면 메시지마다 로그가 쌓인다. 같은 채널은 쿨다운 간격으로만 남긴다. */
 function notifyChannelUnavailable(targetChannelId: string): void {
-  const now = Date.now();
-  if (now - (lastUnavailableLog.get(targetChannelId) ?? 0) < FAILURE_NOTICE_COOLDOWN_MS) return;
-  lastUnavailableLog.set(targetChannelId, now);
+  if (!unavailableLog.claim(targetChannelId)) return;
   console.error(`[messageCreate] output channel ${targetChannelId} is unavailable`);
 }
 
 async function notifyFailure(channel: TextChannel): Promise<void> {
-  const now = Date.now();
-  if (now - (lastFailureNotice.get(channel.id) ?? 0) < FAILURE_NOTICE_COOLDOWN_MS) return;
-  lastFailureNotice.set(channel.id, now);
+  if (!failureNotice.claim(channel.id)) return;
 
   await channel
     .send({
@@ -79,6 +76,13 @@ async function postTranslation(message: Message, channel: TextChannel, body: str
   const link = sourceLink(message);
   const botUserId = message.client.user?.id;
 
+  // discord.js의 TextChannel은 WebhookHost가 요구하는 메서드를 실제로 갖고 있지만,
+  // fetchWebhooks()가 돌려주는 Collection의 find 시그니처와 Webhook.send의 옵션 타입이
+  // WebhookLike보다 넓어 직접 캐스트가 통하지 않는다.
+  //
+  // 여기가 discord.js와의 유일한 미검사 이음매다. WebhookHost/WebhookLike가 실제 타입과
+  // 어긋나도 컴파일러는 잡지 못하고 런타임에 터진다 — discord.js를 올릴 때 확인할 것.
+  // (discord.js v14.27에서 확인)
   const webhook = botUserId
     ? await getWebhook(channel as unknown as WebhookHost, botUserId)
     : undefined;
