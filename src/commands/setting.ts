@@ -18,6 +18,7 @@ import {
   SOURCE_CHANNEL_PERMISSIONS,
   TARGET_CHANNEL_PERMISSIONS,
 } from '../services/channelPermissions';
+import { invalidateWebhook } from '../services/webhookService';
 import type { LanguageCode, TranslationConfig } from '../types';
 
 export const data = new SlashCommandBuilder()
@@ -244,6 +245,11 @@ async function handleRegister(interaction: ChatInputCommandInteraction): Promise
     return;
   }
 
+  // 출력 채널이 바뀌면 이전 채널의 Webhook은 더 쓰지 않는다. 삭제와 같은 이유로 캐시를 비운다.
+  if (result.replaced && result.replaced.targetChannelId !== result.setting.targetChannelId) {
+    invalidateWebhook(result.replaced.targetChannelId);
+  }
+
   const content = result.replaced
     ? [
         `Updated the setting for <#${sourceChannel.id}>.`,
@@ -293,6 +299,10 @@ async function handleRemove(interaction: ChatInputCommandInteraction): Promise<v
     await replyEphemeral(interaction, 'Setting not found. It may already have been removed.');
     return;
   }
+
+  // 설정이 사라지면 그 출력 채널의 Webhook 토큰을 메모리에 들고 있을 이유가 없다.
+  // 같은 채널을 쓰는 설정이 남아 있어도 안전하다 — 캐시만 비우므로 다음 메시지가 다시 확보한다.
+  invalidateWebhook(removed.targetChannelId);
 
   await replyEphemeral(interaction, `Setting removed.\n  ${describe(interaction, removed)}`);
 }
