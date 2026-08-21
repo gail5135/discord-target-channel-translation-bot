@@ -88,3 +88,36 @@ test('translate rejects an unsupported target language', async () => {
 
   await assert.rejects(() => provider.translate('hello', 'xx'), /xx/);
 });
+
+test('a detected "zh" is normalized to the bot language code', async () => {
+  const { impl } = fakeFetch(200, {
+    data: { translations: [{ translatedText: 'hello', detectedSourceLanguage: 'zh' }] },
+  });
+  const provider = createGoogleProvider('key', impl);
+
+  const result = await provider.translate('你好', 'en');
+
+  assert.equal(result.detectedSourceLanguage, 'zh-CN');
+});
+
+test('a detected "zh-Hans" is normalized to the bot language code', async () => {
+  const { impl } = fakeFetch(200, {
+    data: { translations: [{ translatedText: 'hello', detectedSourceLanguage: 'zh-Hans' }] },
+  });
+  const provider = createGoogleProvider('key', impl);
+
+  const result = await provider.translate('你好', 'en');
+
+  assert.equal(result.detectedSourceLanguage, 'zh-CN');
+});
+
+test('a detected language with no alias is passed through unchanged', async () => {
+  const { impl } = fakeFetch(200, {
+    data: { translations: [{ translatedText: 'hello', detectedSourceLanguage: 'fr' }] },
+  });
+  const provider = createGoogleProvider('key', impl);
+
+  const result = await provider.translate('bonjour', 'en');
+
+  assert.equal(result.detectedSourceLanguage, 'fr');
+});

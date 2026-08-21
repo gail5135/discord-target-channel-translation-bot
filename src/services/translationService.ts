@@ -61,6 +61,11 @@ export function initializeTranslator(): void {
   defaultTranslate = createTranslator(providers);
 }
 
+/** 모듈 수준 상태가 테스트 사이에 새지 않도록 비운다. 운영 코드는 호출하지 않는다. */
+export function resetTranslatorForTests(): void {
+  defaultTranslate = undefined;
+}
+
 export function translate(text: string, targetLanguage: string): Promise<TranslationResult> {
   if (!defaultTranslate) {
     throw new Error('initializeTranslator() must be called before translate()');
