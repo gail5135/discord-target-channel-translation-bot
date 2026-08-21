@@ -304,3 +304,100 @@ test('listTranslations elements are typed readonly', () => {
 
   assert.equal(settings.length, 1);
 });
+
+test('initialize drops translation entries that are missing fields', () => {
+  const filePath = tempConfigPath();
+  seed(filePath, {
+    version: 1,
+    guilds: {
+      g1: {
+        translations: [
+          {
+            id: 'cfg_good11',
+            sourceChannelId: 's1',
+            targetChannelId: 't1',
+            targetLanguage: 'ko',
+            createdAt: '2026-08-21T00:00:00.000Z',
+          },
+          { id: 'cfg_bad222', sourceChannelId: 's2' },
+          null,
+          'not an object',
+        ],
+      },
+    },
+  });
+
+  configService.initialize(filePath);
+
+  const list = configService.listTranslations('g1');
+  assert.equal(list.length, 1);
+  assert.equal(list[0].id, 'cfg_good11');
+});
+
+test('a malformed entry does not stop the remaining settings from resolving', () => {
+  const filePath = tempConfigPath();
+  seed(filePath, {
+    version: 1,
+    guilds: {
+      g1: {
+        translations: [
+          { id: 'cfg_bad222', targetLanguage: 'ko' },
+          {
+            id: 'cfg_good11',
+            sourceChannelId: 's1',
+            targetChannelId: 't1',
+            targetLanguage: 'ko',
+            createdAt: '2026-08-21T00:00:00.000Z',
+          },
+        ],
+      },
+    },
+  });
+
+  configService.initialize(filePath);
+
+  const found = configService.findBySourceChannel('g1', 's1');
+  assert.equal(found?.targetChannelId, 't1');
+});
+
+test('overwriting a setting keeps the original createdAt', () => {
+  const filePath = tempConfigPath();
+  seed(filePath, {
+    version: 1,
+    guilds: {
+      g1: {
+        translations: [
+          {
+            id: 'cfg_aaaaaa',
+            sourceChannelId: 's1',
+            targetChannelId: 't1',
+            targetLanguage: 'ko',
+            createdAt: '2020-01-01T00:00:00.000Z',
+          },
+        ],
+      },
+    },
+  });
+  configService.initialize(filePath);
+
+  const result = configService.upsertTranslation('g1', {
+    sourceChannelId: 's1',
+    targetChannelId: 't2',
+    targetLanguage: 'ja',
+  });
+
+  assert.equal(result.setting.createdAt, '2020-01-01T00:00:00.000Z');
+  assert.equal(result.setting.id, 'cfg_aaaaaa');
+  assert.equal(result.setting.targetChannelId, 't2');
+});
+
+// 이 테스트는 모듈 수준 캐시를 비운다. 다른 테스트는 모두 스스로 initialize()를
+// 먼저 부르므로 순서에 영향받지 않지만, 파일 맨 끝에 두어 의도를 분명히 한다.
+test('listTranslations throws when initialize was never called', () => {
+  configService.resetConfigCacheForTests();
+
+  assert.throws(
+    () => configService.listTranslations('g1'),
+    /configService\.initialize\(\) must be called before use/
+  );
+});

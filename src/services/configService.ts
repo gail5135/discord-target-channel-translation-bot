@@ -5,11 +5,37 @@ import type { GuildConfig, StoreData, TranslationConfig } from '../types';
 let cache: StoreData | undefined;
 let storePath: string = CONFIG_PATH;
 
-function normalizeGuild(raw: unknown): GuildConfig {
+/**
+ * 원소 하나가 망가져도 나머지 설정은 살린다. 사양서 4.2.1이 config.json 손편집을
+ * 장점으로 광고하는 이상 필드가 빠진 원소는 실제로 도달 가능하고, 그대로 두면
+ * 메시지를 처리하는 중에 터진다 — 기동 시점에 걸러내는 편이 낫다.
+ */
+function isTranslationConfig(raw: unknown): raw is TranslationConfig {
+  if (typeof raw !== 'object' || raw === null) return false;
+  const candidate = raw as Record<string, unknown>;
+  return (
+    typeof candidate.id === 'string' &&
+    typeof candidate.sourceChannelId === 'string' &&
+    typeof candidate.targetChannelId === 'string' &&
+    typeof candidate.targetLanguage === 'string' &&
+    typeof candidate.createdAt === 'string'
+  );
+}
+
+function normalizeGuild(guildId: string, raw: unknown): GuildConfig {
   const candidate = (typeof raw === 'object' && raw !== null ? raw : {}) as Partial<GuildConfig>;
-  return {
-    translations: Array.isArray(candidate.translations) ? candidate.translations : [],
-  };
+  const source: unknown[] = Array.isArray(candidate.translations) ? candidate.translations : [];
+  const translations = source.filter(isTranslationConfig);
+
+  const dropped = source.length - translations.length;
+  if (dropped > 0) {
+    // 무엇이 어떻게 망가졌는지는 남기지 않는다. 개수와 길드 ID면 손편집한 사람이 찾아간다.
+    console.error(
+      `[configService] dropped ${dropped} malformed translation entries for guild ${guildId}`
+    );
+  }
+
+  return { translations };
 }
 
 /**
@@ -23,7 +49,7 @@ function normalize(data: StoreData): StoreData {
       : {};
   const guilds: Record<string, GuildConfig> = {};
   for (const [guildId, guildData] of Object.entries(rawGuilds)) {
-    guilds[guildId] = normalizeGuild(guildData);
+    guilds[guildId] = normalizeGuild(guildId, guildData);
   }
   return { version: typeof data.version === 'number' ? data.version : 1, guilds };
 }
@@ -38,6 +64,12 @@ function requireCache(): StoreData {
 export function initialize(filePath: string = CONFIG_PATH): void {
   storePath = filePath;
   cache = normalize(loadStore(filePath));
+}
+
+/** 모듈 수준 캐시가 테스트 사이에 새지 않도록 비운다. 운영 코드는 호출하지 않는다. */
+export function resetConfigCacheForTests(): void {
+  cache = undefined;
+  storePath = CONFIG_PATH;
 }
 
 export function listTranslations(guildId: string): readonly Readonly<TranslationConfig>[] {
@@ -99,7 +131,9 @@ export function upsertTranslation(guildId: string, input: TranslationInput): Ups
     sourceChannelId: input.sourceChannelId,
     targetChannelId: input.targetChannelId,
     targetLanguage: input.targetLanguage,
-    createdAt: new Date().toISOString(),
+    // 덮어쓰기는 새 설정이 아니라 같은 설정의 수정이다. id를 물려주는 것과 같은 이유로
+    // createdAt도 물려준다 — 그러지 않으면 이름과 달리 "최종 수정 시각"이 된다.
+    createdAt: replaced?.createdAt ?? new Date().toISOString(),
   };
 
   if (index >= 0) {
