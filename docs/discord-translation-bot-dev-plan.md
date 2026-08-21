@@ -168,9 +168,18 @@ discord-translation-bot/
 - `GuildConfig.webhookCache`와 `WebhookCacheEntry` 타입 삭제 — 쓰지 않기로 확정된 필드
 
 ### Phase 5 — 안정화 및 배포
-- 에러 핸들링/로깅 정비 (API 실패, 권한 부족, Webhook 생성 실패 등 케이스별 대응)
-- pm2 `ecosystem.config.js` 작성 및 GCP e2-micro 배포
-- 테스트 서버에서 통합 테스트 후, 실 서버 적용
+
+상세 근거는 `docs/superpowers/specs/2026-08-21-phase5-stabilization-deployment-design.md` 참고.
+
+- **로깅**: 라이브러리를 넣지 않고 `console.*` 유지, 타임스탬프는 pm2의 `time: true`가 붙인다. REST 오류 객체와 메시지 본문은 로그에 넣지 않는다(CLAUDE.md 규칙)
+- **로그 로테이션**: `pm2-logrotate` 필수. pm2는 기본적으로 로그를 무한히 쌓고, 디스크가 차면 죽는 것은 봇이 아니라 서버다
+- **크래시 루프 차단**: `max_restarts`·`min_uptime` 설정. `.env`가 잘못되면 봇은 기동 즉시 종료되는데, 기본 설정이면 pm2가 영원히 재시작하며 공유 vCPU를 태운다. `max_memory_restart`도 함께 둔다
+- **이월 백로그 정리** — 쿨다운 맵 증가, 설정 삭제 후 웹훅 토큰 잔존, `translations[]` 원소 미검증이 장기 실행에서 실제로 문제가 되는 것들이다
+- **산출물**: `ecosystem.config.js`, `docs/deployment.md`(생성부터 갱신·롤백까지), `README.md`(공개 저장소 첫 화면)
+- **통합 테스트**: 디스코드 서버가 하나뿐이라 "테스트 서버 → 실 서버"가 성립하지 않는다. 대신 **배포한 서버에서 Phase 1~4의 수동 시나리오를 다시 돌린다** — 확인 대상은 기능이 아니라 "로컬에서 통과한 것이 e2-micro에서도 통과하는가"다
+- **넣지 않는 것**: 외부 모니터링·알림(쿼터 소진은 이미 출력 채널에 알림), CI/CD(배포가 세 줄이라 이득이 적음), Docker(RAM 1GB에서 오버헤드만 늘어남)
+
+> 실제 인스턴스 생성과 SSH 접속은 사람이 직접 수행한다. Phase 5의 코드·문서 작업과 분리한다.
 
 ---
 
@@ -199,7 +208,8 @@ discord-translation-bot/
 | Webhook 생성 실패(권한 부족 등) | 발신자 명의 표시 불가 | Manage Webhooks 권한 재확인 절차를 배포 체크리스트에 포함 |
 | 번역 API 키 유출 리스크 | 키 오·남용 시 쿼터 소진/과금 | 키를 `.env`에만 보관하고 `.gitignore` 포함, 서버 파일 권한(chmod 600) 유지 |
 | 설정 JSON 파일 손상 또는 유실 | 전체 설정 초기화, 봇 동작 불능 | 원자적 쓰기(임시 파일 + rename) 적용, 로드 시 유효성 검증 후 실패 시 로컬 백업본(`.bak`)으로 폴백 |
-| GCP e2-micro 월 egress 1GB 제한 초과 | 서비스 중단/과금 | 로깅 최소화, 트래픽 모니터링 |
+| GCP e2-micro 월 egress 1GB 제한 초과 | 과금 | 봇이 내보내는 것은 번역된 텍스트뿐이라 실사용량은 한계에 한참 못 미친다. 첨부파일을 받아 재업로드하는 기능을 추가하지 않는 것이 유일한 방어선 |
+| pm2 로그 누적으로 디스크(30GB) 고갈 | 프로세스 다운, SSH 접속 불가 | `pm2-logrotate`로 크기·보관 기간 제한. 로그는 egress가 아니라 디스크를 소모한다 |
 
 ---
 
