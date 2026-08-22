@@ -103,8 +103,10 @@ pm2 logs --lines 50
 
 ```
 [translation] providers: deepl -> google
-Logged in as <봇이름>#0000
+Logged in as <봇이름>
 ```
+
+(과거에는 이름 뒤에 `#숫자` discriminator가 붙었지만, discriminator가 `0`인 현행 계정은 접미사 없이 이름만 찍힌다. 레거시 계정이 아니면 이 형태가 정상이다.)
 
 ## 8. 로그 로테이션 (필수)
 
@@ -181,9 +183,17 @@ pm2 restart discord-translation-bot
 
 | 증상 | 확인할 것 |
 |---|---|
-| `pm2 status`가 `errored` | `pm2 logs --err`. `.env` 누락이나 키 부재가 대부분이다. 60초 안에 5번 죽으면 pm2가 포기하므로, 고친 뒤 `pm2 restart`가 아니라 `pm2 start ecosystem.config.js`로 카운터를 초기화한다 |
+| `pm2 status`가 `errored` | 아래 "크래시 루프에서 회복하기" 참고 |
 | 슬래시 커맨드가 안 보임 | `npm run deploy-commands`를 실행했는지, `DISCORD_TEST_GUILD_ID`가 그 서버의 ID인지 |
 | 메시지를 감지하지 못함 | MESSAGE CONTENT INTENT, 원본 채널의 View Channel 권한 |
 | 봇 이름으로 게시됨 (원 발신자가 아니라) | 출력 채널의 Manage Webhooks 권한 |
 | 같은 메시지가 두 번 게시됨 | 봇이 두 곳에서 돌고 있다. 로컬에서도 켜뒀는지 확인한다 |
 | 디스크가 찼다 | `pm2 install pm2-logrotate`를 빠뜨렸다. 8절을 실행하고 `pm2 flush`로 기존 로그를 비운다 |
+
+### 크래시 루프에서 회복하기
+
+60초를 못 버틴 기동이 5번 반복되면 pm2는 포기하고 `errored` 상태로 남는다(`ecosystem.config.js`의 `min_uptime`/`max_restarts`). 순서대로:
+
+1. **먼저 원인을 고친다.** `pm2 logs --err`로 확인한다. `.env` 누락이나 번역 API 키 부재가 대부분이다.
+2. **재시작 카운터를 초기화한다.** `pm2 restart`는 카운터를 초기화하지 않는다 — pm2 공식 문서가 안내하는 방법은 `pm2 reset discord-translation-bot`이다. 그 다음 `pm2 restart discord-translation-bot`을 실행한다.
+3. **그래도 `errored`에 머무르면 확실한 방법을 쓴다.** `pm2 delete discord-translation-bot`으로 앱 등록 자체를 지우면 앱별 상태(재시작 카운터 포함)가 함께 사라진다. 이어서 `pm2 start ecosystem.config.js`로 다시 등록한다.
