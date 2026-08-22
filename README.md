@@ -42,14 +42,14 @@
 
 **봇 권한**
 
-| 권한 | 어디에 |
-|---|---|
-| View Channel | 원본 채널, 출력 채널 |
-| Send Messages | 출력 채널 |
-| Manage Webhooks | 출력 채널 — 원 발신자 명의 게시에 필요합니다 |
-| Read Message History, Embed Links | 출력 채널 |
+| 권한 | 어디에 | 등록 시 검사 |
+|---|---|---|
+| View Channel | 원본 채널, 출력 채널 | ✓ |
+| Send Messages | 출력 채널 | ✓ |
+| Manage Webhooks | 출력 채널 — 원 발신자 명의 게시에 필요합니다 | ✓ |
+| Read Message History, Embed Links | 출력 채널 | — |
 
-권한이 부족하면 `/setting register`가 무엇이 없는지 알려주고 등록을 거부합니다.
+`/setting register`는 View Channel · Send Messages · Manage Webhooks만 검사해 부족하면 등록을 거부합니다. 나머지 둘은 등록은 통과하지만 없으면 런타임에 조용히 문제가 생깁니다 — 예를 들어 Embed Links가 없으면 첨부 미리보기가 깨집니다.
 
 ## 로컬 실행
 
