@@ -90,15 +90,16 @@ Developer Portal에서:
 4. 출력 채널 게시 — Webhook 생성/캐싱, 원 발신자 명의 전송, 원문 링크
 5. 안정화 및 배포 — 에러 핸들링, pm2, 통합 테스트
 
-현재 **Phase 4 완료** 상태입니다(2026-08-21 실제 디스코드에서 수동 검증 통과 — 원 발신자 명의·아바타 게시, 별명 변경 반영, 첨부만 있는 메시지 전달, 본문+첨부 동시 전달, 웹훅 삭제 후 자가 치유, 재시작 후 기존 웹훅 재사용, 멘션 재알림 차단). 구현된 것:
+현재 **Phase 5 코드·문서 완료** 상태입니다(배포 전)(2026-08-21 실제 디스코드에서 수동 검증 통과 — 원 발신자 명의·아바타 게시, 별명 변경 반영, 첨부만 있는 메시지 전달, 본문+첨부 동시 전달, 웹훅 삭제 후 자가 치유, 재시작 후 기존 웹훅 재사용, 멘션 재알림 차단). 구현된 것:
 
 - discord.js 연결과 인터랙션·메시지 라우팅 — `src/index.ts`, `src/events/`
 - JSON 저장소와 메모리 캐시 — `src/store/`, `src/services/configService.ts`
 - `/setting register|list|remove` 전체 동작 — `src/commands/setting.ts`
 - 번역 파이프라인 — `src/services/providers/`(DeepL·Google), `translationService.ts`(failover), `messageQueue.ts`(채널별 직렬), `messageChunks.ts`(2000자 분할), `events/messageCreate.ts`
 - **원 발신자 명의 게시** — `webhookService.ts`(채널별 Webhook 확보·메모리 캐시), `webhookIdentity.ts`(username 정제). 첨부파일은 링크로 전달하며 본문 없는 메시지도 게시한다
+- **배포 준비물** — `ecosystem.config.js`(pm2 — 크래시 루프 차단, 단일 인스턴스 고정), `docs/deployment.md`(GCP e2-micro 절차·갱신·롤백·체크리스트), `README.md`
 
-아직 없는 것: pm2 배포와 에러 핸들링 정비(Phase 5).
+Phase 5의 코드·문서 작업은 끝났습니다. 남은 것은 사용자가 GCP 인스턴스를 만든 뒤 수행하는 **배포와 수동 검증**입니다 — 설계서 §5 참고.
 
 **로그에 REST 오류 객체를 그대로 넘기지 마세요.** `@discordjs/rest`가 요청 URL을 통째로 담는데 Webhook 요청 URL에는 토큰이 들어 있습니다. Webhook 관련 오류는 `webhookService.describeError()`를 거쳐 출력합니다.
 

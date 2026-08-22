@@ -168,6 +168,7 @@ Phase 5는 이것을 **24시간 도는 서버 프로세스로 넘긴다.** 새 �
 5. `.env`의 `DISCORD_TOKEN`을 일부러 망가뜨리고 `pm2 restart` → 무한 재시작 없이 pm2가 포기(`pm2 status`가 `errored`). 복구 후 정상 기동
 6. `pm2 logs`에 메시지 본문이 남지 않는지 확인
 7. `ls -l .env`로 권한이 `600`인지 확인
+8. `/setting remove` 후 같은 출력 채널로 다시 `/setting register` → 정상 게시(Webhook 캐시 무효화 경로. 단위 테스트가 없는 유일한 백로그 수정이다)
 
 ---
 
