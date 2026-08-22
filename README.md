@@ -36,7 +36,7 @@
 | 인텐트 | 필요성 |
 |---|---|
 | MESSAGE CONTENT INTENT | **필수** — 없으면 메시지 내용 자체를 받을 수 없습니다 |
-| SERVER MEMBERS INTENT | 권장 — 서버 별명 표시에 씁니다 |
+| SERVER MEMBERS INTENT | 권장 |
 
 **OAuth2 스코프**: `bot`, `applications.commands`
 

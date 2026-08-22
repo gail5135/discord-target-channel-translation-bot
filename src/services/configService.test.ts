@@ -360,6 +360,53 @@ test('a malformed entry does not stop the remaining settings from resolving', ()
   assert.equal(found?.targetChannelId, 't1');
 });
 
+/** translationService.test.ts의 captureLog와 같은 모양 — console.error를 잠깐 가로챈 뒤 finally에서 복원한다 */
+function captureError(fn: () => void): string[] {
+  const lines: string[] = [];
+  const original = console.error;
+  console.error = (...args: unknown[]) => {
+    lines.push(args.map(String).join(' '));
+  };
+  try {
+    fn();
+  } finally {
+    console.error = original;
+  }
+  return lines;
+}
+
+test('initialize logs how many malformed entries were dropped and for which guild', () => {
+  const filePath = tempConfigPath();
+  seed(filePath, {
+    version: 1,
+    guilds: {
+      g1: {
+        translations: [
+          {
+            id: 'cfg_good11',
+            sourceChannelId: 's1',
+            targetChannelId: 't1',
+            targetLanguage: 'ko',
+            createdAt: '2026-08-21T00:00:00.000Z',
+          },
+          { id: 'cfg_bad222', sourceChannelId: 's2' },
+          null,
+          'not an object',
+        ],
+      },
+    },
+  });
+
+  const lines = captureError(() => configService.initialize(filePath));
+
+  // 손상된 3개 원소를 버렸다는 사실과 대상 길드가 로그에 남아야 한다 — 운영자가
+  // 설정 파일을 손으로 고칠 때 유일하게 볼 수 있는 신호이기 때문
+  assert.ok(
+    lines.some((line) => line.includes('dropped 3') && line.includes('g1')),
+    lines.join('\n')
+  );
+});
+
 test('overwriting a setting keeps the original createdAt', () => {
   const filePath = tempConfigPath();
   seed(filePath, {

@@ -10,6 +10,11 @@ module.exports = {
       script: 'node_modules/ts-node/dist/bin.js',
       args: ['src/index.ts'],
 
+      // script가 상대 경로인 데다, dotenv(src/index.ts)는 process.cwd() 기준으로
+      // .env를 찾는다. cwd를 명시하지 않으면 저장소 루트 밖에서 pm2 start를 실행했을 때
+      // .env를 못 찾고 DISCORD_TOKEN 오류로 크래시 루프에 빠진다.
+      cwd: __dirname,
+
       // 인스턴스가 둘이면 같은 토큰으로 게이트웨이에 두 번 붙고 메시지가 두 번 게시된다.
       // 개발 중 실제로 겪은 문제라 fork/1을 명시적으로 못박는다.
       instances: 1,
