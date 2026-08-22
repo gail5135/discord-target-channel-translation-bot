@@ -54,8 +54,8 @@
 ## 로컬 실행
 
 ```bash
-git clone https://github.com/gail5135/discord-translation-bot.git
-cd discord-translation-bot
+git clone https://github.com/gail5135/discord-target-channel-translation-bot.git
+cd discord-target-channel-translation-bot
 npm ci
 
 cp .env.example .env

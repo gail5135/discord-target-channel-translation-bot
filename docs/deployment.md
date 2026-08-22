@@ -37,8 +37,8 @@ node -v    # v22.x 이상인지 확인
 
 ```bash
 cd ~
-git clone https://github.com/gail5135/discord-translation-bot.git
-cd discord-translation-bot
+git clone https://github.com/gail5135/discord-target-channel-translation-bot.git
+cd discord-target-channel-translation-bot
 ```
 
 ## 4. 의존성 설치
@@ -138,7 +138,7 @@ pm2 save
 ## 10. 갱신 절차
 
 ```bash
-cd ~/discord-translation-bot
+cd ~/discord-target-channel-translation-bot
 git pull
 npm ci
 pm2 restart discord-translation-bot
@@ -153,7 +153,7 @@ npm run deploy-commands
 ## 11. 롤백 절차
 
 ```bash
-cd ~/discord-translation-bot
+cd ~/discord-target-channel-translation-bot
 git log --oneline -10          # 되돌릴 커밋 확인
 git checkout <이전 커밋 해시>
 npm ci
