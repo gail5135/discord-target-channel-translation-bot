@@ -49,7 +49,7 @@
 | Manage Webhooks | 출력 채널 — 원 발신자 명의 게시에 필요합니다 | ✓ |
 | Read Message History, Embed Links | 출력 채널 | — |
 
-`/setting register`는 View Channel · Send Messages · Manage Webhooks만 검사해 부족하면 등록을 거부합니다. 나머지 둘은 등록은 통과하지만 없으면 런타임에 조용히 문제가 생깁니다 — 예를 들어 Embed Links가 없으면 첨부 미리보기가 깨집니다.
+`/setting register`는 View Channel · Send Messages · Manage Webhooks만 검사해 부족하면 등록을 거부합니다. 나머지 둘은 검사하지 않아 없어도 등록은 통과하지만, 봇을 초대할 때는 함께 부여해 두는 편이 좋습니다.
 
 ## 로컬 실행
 
