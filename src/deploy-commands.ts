@@ -4,11 +4,11 @@ import { data as settingCommand } from './commands/setting';
 
 const token = process.env.DISCORD_TOKEN;
 const clientId = process.env.DISCORD_CLIENT_ID;
-const guildId = process.env.DISCORD_TEST_GUILD_ID;
+const guildId = process.env.DISCORD_GUILD_ID;
 
 if (!token || !clientId || !guildId) {
   throw new Error(
-    'DISCORD_TOKEN, DISCORD_CLIENT_ID, DISCORD_TEST_GUILD_ID must all be set in .env'
+    'DISCORD_TOKEN, DISCORD_CLIENT_ID, DISCORD_GUILD_ID must all be set in .env'
   );
 }
 

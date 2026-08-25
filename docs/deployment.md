@@ -71,7 +71,7 @@ chmod 600 .env
 |---|---|
 | `DISCORD_TOKEN` | Developer Portal → Bot → Token |
 | `DISCORD_CLIENT_ID` | Developer Portal → General Information → Application ID |
-| `DISCORD_TEST_GUILD_ID` | 봇을 쓸 **서버(길드) ID**. 슬래시 커맨드 등록 대상이다 |
+| `DISCORD_GUILD_ID` | 봇을 쓸 **서버(길드) ID**. 슬래시 커맨드 등록 대상이다 |
 | `DEEPL_API_KEY` | 1순위 제공자. 무료 키는 `:fx`로 끝나며 엔드포인트는 코드가 자동 판별한다 |
 | `GOOGLE_TRANSLATE_API_KEY` | 2순위 제공자 |
 
@@ -87,7 +87,7 @@ npm run deploy-commands
 
 `Registered 1 command(s) to guild <id>` 가 나오면 성공이다.
 
-**길드 단위 등록이다.** 즉시 반영된다(글로벌 등록은 최대 1시간). `DISCORD_TOKEN`·`DISCORD_CLIENT_ID`·`DISCORD_TEST_GUILD_ID` 셋이 모두 있어야 하며, 하나라도 비어 있으면 오류를 던지고 끝난다.
+**길드 단위 등록이다.** 즉시 반영된다(글로벌 등록은 최대 1시간). `DISCORD_TOKEN`·`DISCORD_CLIENT_ID`·`DISCORD_GUILD_ID` 셋이 모두 있어야 하며, 하나라도 비어 있으면 오류를 던지고 끝난다.
 
 이 명령은 **커맨드 정의가 바뀌었을 때만** 다시 실행하면 된다. 봇을 재시작할 때마다 부를 필요는 없다.
 
@@ -184,7 +184,7 @@ pm2 restart discord-translation-bot
 | 증상 | 확인할 것 |
 |---|---|
 | `pm2 status`가 `errored` | 아래 "크래시 루프에서 회복하기" 참고 |
-| 슬래시 커맨드가 안 보임 | `npm run deploy-commands`를 실행했는지, `DISCORD_TEST_GUILD_ID`가 그 서버의 ID인지 |
+| 슬래시 커맨드가 안 보임 | `npm run deploy-commands`를 실행했는지, `DISCORD_GUILD_ID`가 그 서버의 ID인지 |
 | 메시지를 감지하지 못함 | MESSAGE CONTENT INTENT, 원본 채널의 View Channel 권한 |
 | 봇 이름으로 게시됨 (원 발신자가 아니라) | 출력 채널의 Manage Webhooks 권한 |
 | 같은 메시지가 두 번 게시됨 | 봇이 두 곳에서 돌고 있다. 로컬에서도 켜뒀는지 확인한다 |

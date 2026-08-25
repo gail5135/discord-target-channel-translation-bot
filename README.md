@@ -72,7 +72,7 @@ npm start
 |---|---|
 | `DISCORD_TOKEN` | 봇 토큰 |
 | `DISCORD_CLIENT_ID` | 애플리케이션 ID |
-| `DISCORD_TEST_GUILD_ID` | 슬래시 커맨드를 등록할 서버 ID (길드 등록은 즉시 반영됩니다) |
+| `DISCORD_GUILD_ID` | 봇을 쓸 서버(길드) ID. 슬래시 커맨드가 이 서버에 등록됩니다 (즉시 반영) |
 | `DEEPL_API_KEY` | 무료 키는 `:fx`로 끝납니다. 엔드포인트는 코드가 자동 판별합니다 |
 | `GOOGLE_TRANSLATE_API_KEY` | Cloud Translation API를 활성화한 뒤 발급합니다 |
 
