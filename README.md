@@ -62,8 +62,9 @@ cp .env.example .env
 # .env를 열어 값을 채웁니다
 chmod 600 .env
 
+npm run build             # TypeScript -> dist/ 컴파일
 npm run deploy-commands   # 슬래시 커맨드 등록 (커맨드가 바뀔 때만 다시 실행)
-npm start
+npm start                 # dist/index.js 실행
 ```
 
 **`.env`는 저장소에 없습니다.** 자격증명이 들어가므로 `.gitignore` 대상이며, 직접 만들어야 합니다. `.env.example`이 필요한 변수 목록입니다.
@@ -94,7 +95,7 @@ npm start
 
 ## 설정 저장
 
-서버별 채널·언어 설정은 `src/store/config.json`에 JSON으로 저장됩니다 (gitignore 대상). 구동 시 메모리에 캐시하고, 슬래시 커맨드로 변경될 때만 파일에 씁니다.
+서버별 채널·언어 설정은 저장소 루트의 `config.json`에 저장됩니다 (gitignore 대상). `dist/`가 빌드할 때마다 새로 만들어지므로 설정은 그 바깥에 둡니다. 구동 시 메모리에 캐시하고, 슬래시 커맨드로 변경될 때만 파일에 씁니다.
 
 **이 파일에 자격증명은 없습니다.** API 키는 `.env`에 있고, Webhook 토큰은 아예 저장하지 않습니다(메모리 캐시만, 재시작 시 재조회).
 
@@ -103,11 +104,13 @@ npm start
 ## 개발
 
 ```bash
-npm test         # node:test 단위 테스트
-npm run typecheck   # tsc --noEmit
+npm run dev         # ts-node로 직접 실행 (빌드 없이 반복 수정할 때)
+npm test            # node:test 단위 테스트 — 소스(.ts)를 그대로 돌립니다
+npm run typecheck   # tsc --noEmit — 테스트 파일까지 검사합니다
+npm run build       # tsc -p tsconfig.build.json — dist/ 생성, 테스트는 제외
 ```
 
-빌드 단계가 없습니다. ts-node로 직접 실행합니다.
+배포는 컴파일된 `dist/`를 실행합니다. ts-node는 TypeScript 컴파일러를 프로세스에 상주시켜 RSS가 **약 290MB** 더 드는데(실측), RAM 1GB인 배포 대상에서는 그 차이가 큽니다. 로컬에서 빠르게 고쳐가며 볼 때는 `npm run dev`가 편합니다.
 
 ## 배포
 

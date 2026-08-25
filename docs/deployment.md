@@ -57,7 +57,21 @@ sudo swapon /swapfile
 echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 ```
 
-## 5. `.env` 작성
+## 5. 빌드
+
+TypeScript를 컴파일해 `dist/`를 만든다. **`dist`는 저장소에 없으므로 서버에서 직접 빌드한다.**
+
+```bash
+npm run build
+```
+
+`dist/index.js`가 생기면 성공이다. pm2는 이 파일을 실행한다.
+
+빌드 산출물을 돌리는 이유는 메모리다. ts-node로 TypeScript를 직접 실행하면 TypeScript 컴파일러가 프로세스에 상주해 RSS가 **약 290MB** 더 든다(실측). RAM 1GB인 e2-micro에서는 그 차이가 결정적이다. 대신 코드를 고칠 때마다 빌드가 한 번 필요하다.
+
+`npm run build`도 메모리를 쓰지만 배포 시점 한 번뿐이고, 4절의 스왑이 잡혀 있으면 문제되지 않는다.
+
+## 6. `.env` 작성
 
 **`.env`는 저장소에 없다.** 자격증명이 들어가므로 `.gitignore` 대상이며, 서버에서 직접 만든다.
 
@@ -79,7 +93,7 @@ chmod 600 .env
 
 `chmod 600`은 반드시 실행한다. 코드가 쓰는 `config.json`에는 자동으로 적용되지만 `.env`는 사람이 만드는 파일이다.
 
-## 6. 슬래시 커맨드 등록
+## 7. 슬래시 커맨드 등록
 
 ```bash
 npm run deploy-commands
@@ -87,11 +101,13 @@ npm run deploy-commands
 
 `Registered 1 command(s) to guild <id>` 가 나오면 성공이다.
 
+이 명령도 `dist/`를 실행하므로 **5절의 빌드가 먼저 끝나 있어야 한다.**
+
 **길드 단위 등록이다.** 즉시 반영된다(글로벌 등록은 최대 1시간). `DISCORD_TOKEN`·`DISCORD_CLIENT_ID`·`DISCORD_GUILD_ID` 셋이 모두 있어야 하며, 하나라도 비어 있으면 오류를 던지고 끝난다.
 
 이 명령은 **커맨드 정의가 바뀌었을 때만** 다시 실행하면 된다. 봇을 재시작할 때마다 부를 필요는 없다.
 
-## 7. pm2 설치와 기동
+## 8. pm2 설치와 기동
 
 ```bash
 sudo npm install -g pm2
@@ -108,7 +124,7 @@ Logged in as <봇이름>
 
 (과거에는 이름 뒤에 `#숫자` discriminator가 붙었지만, discriminator가 `0`인 현행 계정은 접미사 없이 이름만 찍힌다. 레거시 계정이 아니면 이 형태가 정상이다.)
 
-## 8. 로그 로테이션 (필수)
+## 9. 로그 로테이션 (필수)
 
 pm2는 기본적으로 로그를 무한히 쌓는다. 디스크 30GB를 채우면 죽는 것은 봇이 아니라 서버다 — 그 상태에서는 SSH 접속도 어려워진다.
 
@@ -121,7 +137,7 @@ pm2 set pm2-logrotate:compress true
 
 `pm2-logrotate`는 pm2 자체 모듈이라 `package.json`과 무관하다.
 
-## 9. 부팅 시 자동 시작
+## 10. 부팅 시 자동 시작
 
 ```bash
 pm2 startup systemd
@@ -135,14 +151,17 @@ pm2 save
 
 `pm2 save`를 빠뜨리면 재부팅 후 pm2는 뜨지만 봇은 뜨지 않는다.
 
-## 10. 갱신 절차
+## 11. 갱신 절차
 
 ```bash
 cd ~/discord-target-channel-translation-bot
 git pull
 npm ci
+npm run build
 pm2 restart discord-translation-bot
 ```
+
+**`npm run build`를 빠뜨리면 pm2가 옛 `dist/`를 계속 실행한다.** 코드를 받아왔는데 동작이 그대로라면 이것을 먼저 의심한다.
 
 슬래시 커맨드 정의(`src/commands/setting.ts`의 `data`)가 바뀐 경우에만 추가로:
 
@@ -150,21 +169,22 @@ pm2 restart discord-translation-bot
 npm run deploy-commands
 ```
 
-## 11. 롤백 절차
+## 12. 롤백 절차
 
 ```bash
 cd ~/discord-target-channel-translation-bot
 git log --oneline -10          # 되돌릴 커밋 확인
 git checkout <이전 커밋 해시>
 npm ci
+npm run build
 pm2 restart discord-translation-bot
 ```
 
-`.env`와 `config.json`은 gitignore 대상이라 `git checkout`의 영향을 받지 않는다. 설정은 그대로 유지된다.
+`.env`와 저장소 루트의 `config.json`은 gitignore 대상이라 `git checkout`의 영향을 받지 않는다. 설정은 그대로 유지된다. `dist/`도 gitignore 대상이므로 반드시 다시 빌드해야 한다.
 
 되돌린 뒤 `git checkout main`으로 복귀할 수 있다.
 
-## 12. 배포 체크리스트
+## 13. 배포 체크리스트
 
 기동 직후 확인한다.
 
@@ -173,6 +193,7 @@ pm2 restart discord-translation-bot
 - [ ] 봇이 출력 채널에 **View Channel / Send Messages / Manage Webhooks** 권한을 갖고 있다
 - [ ] `ls -l .env`의 권한이 `-rw-------` (600)이다
 - [ ] `pm2 logs`에 `[translation] providers: ...`와 `Logged in as ...`가 보인다
+- [ ] `dist/index.js`가 존재한다 (`npm run build`를 실행했다)
 - [ ] `pm2 status`가 `online`이다
 - [ ] `pm2 ls`에 `pm2-logrotate`가 보인다
 - [ ] `pm2 save`를 실행했다
@@ -188,7 +209,7 @@ pm2 restart discord-translation-bot
 | 메시지를 감지하지 못함 | MESSAGE CONTENT INTENT, 원본 채널의 View Channel 권한 |
 | 봇 이름으로 게시됨 (원 발신자가 아니라) | 출력 채널의 Manage Webhooks 권한 |
 | 같은 메시지가 두 번 게시됨 | 봇이 두 곳에서 돌고 있다. 로컬에서도 켜뒀는지 확인한다 |
-| 디스크가 찼다 | `pm2 install pm2-logrotate`를 빠뜨렸다. 8절을 실행하고 `pm2 flush`로 기존 로그를 비운다 |
+| 디스크가 찼다 | `pm2 install pm2-logrotate`를 빠뜨렸다. 9절을 실행하고 `pm2 flush`로 기존 로그를 비운다 |
 
 ### 크래시 루프에서 회복하기
 

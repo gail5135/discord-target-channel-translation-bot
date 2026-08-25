@@ -5,12 +5,12 @@ module.exports = {
     {
       name: 'discord-translation-bot',
 
-      // ts-node CLI를 node로 직접 실행한다. npm을 거치면 pm2가 관리하는 대상이
+      // 컴파일된 JS를 node로 직접 실행한다. npm을 거치면 pm2가 관리하는 대상이
       // npm 래퍼 프로세스가 되어 재시작과 시그널 전달이 한 단계 어긋난다.
-      script: 'node_modules/ts-node/dist/bin.js',
-      args: ['src/index.ts'],
+      // 배포 전 `npm run build`로 dist를 만들어야 한다 — dist는 저장소에 없다.
+      script: 'dist/index.js',
 
-      // script가 상대 경로인 데다, dotenv(src/index.ts)는 process.cwd() 기준으로
+      // script가 상대 경로인 데다, dotenv(dist/index.js)는 process.cwd() 기준으로
       // .env를 찾는다. cwd를 명시하지 않으면 저장소 루트 밖에서 pm2 start를 실행했을 때
       // .env를 못 찾고 DISCORD_TOKEN 오류로 크래시 루프에 빠진다.
       cwd: __dirname,
@@ -29,10 +29,11 @@ module.exports = {
       max_restarts: 5,
       restart_delay: 5000,
 
-      // 누수를 잡기 위한 선. ts-node는 TypeScript 컴파일러를 메모리에 상주시키므로
-      // 정상 사용량이 크고, 이 값이 너무 낮으면 정상 동작 중 재시작되어 min_uptime
-      // 안에 반복되면 max_restarts에 걸린다. RAM 1GB 서버에서도 정상 사용 범위 내다.
-      max_memory_restart: '400M',
+      // 누수를 잡기 위한 선. 컴파일된 JS를 돌리므로 ts-node가 상주시키던 TypeScript
+      // 컴파일러 몫(측정값 약 290MB)이 사라졌다 — 모듈 로드 직후 RSS가 약 80MB다.
+      // 게이트웨이 연결과 길드 캐시를 얹어도 여유가 있고, 누수는 RAM 1GB 서버가
+      // 힘들어지기 한참 전에 걸린다.
+      max_memory_restart: '250M',
 
       // 로그 줄마다 타임스탬프. 로깅 라이브러리를 두지 않는 대신 pm2가 붙인다.
       time: true,

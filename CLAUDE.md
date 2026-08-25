@@ -25,7 +25,7 @@
 | 언어 | TypeScript |
 | 런타임 | Node.js 22 LTS 이상 |
 | Discord 라이브러리 | discord.js v14.x |
-| 실행기 | ts-node (별도 빌드 단계 없음) |
+| 실행기 | 배포는 `tsc` 컴파일 후 `node dist/index.js`. 로컬 개발은 ts-node (`npm run dev`) |
 | 프로세스 매니저 | pm2 |
 | 설정 저장소 | **JSON 파일** (Node 내장 `fs`) — DB 없음 |
 | 호스팅 | GCP e2-micro (Always Free) |
@@ -38,10 +38,25 @@
 
 설정 데이터가 수 KB 수준이고 쓰기 빈도가 매우 낮아 SQLite는 과설계로 판단했습니다. 또한 `better-sqlite3`는 네이티브 모듈이라 RAM 1GB인 e2-micro에서 `npm install`이 메모리 부족으로 실패하는 사례가 흔합니다.
 
+- 위치는 저장소 루트의 `config.json` (빌드 산출물 밖)
 - 구동 시 파일 전체를 읽어 **메모리에 캐시**, 슬래시 커맨드로 변경될 때만 파일에 기록
 - 메시지 이벤트 처리 시에는 메모리 캐시만 참조 (파일 I/O 없음)
 - 쓰기는 임시 파일 기록 후 `fs.rename`으로 교체하는 **원자적 쓰기**, 교체 직전 기존 파일을 `config.json.bak`으로 복사해 로컬 백업 유지 (로드 시 손상 감지되면 `.bak`으로 폴백)
 - `config.json`에는 **자격증명이 없다.** 번역 API 키는 `.env`에 있고, Webhook 토큰은 Phase 4에서 아예 저장하지 않기로 했다(메모리 캐시만, 재시작 시 재조회). 담기는 것은 서버별 채널·언어 설정뿐이다. 그래도 공개할 정보는 아니므로 `.gitignore`와 파일 권한 `0o600`은 유지한다(쓰기 시 코드가 자동 적용)
+
+### 배포는 컴파일된 dist를 실행한다 (ts-node 아님)
+
+**2026-08-25 변경.** 원래는 ts-node로 TypeScript를 직접 실행했으나, 배포 대상이 RAM 1GB라 컴파일 방식으로 바꿨습니다. 실측으로 ts-node가 TypeScript 컴파일러를 상주시켜 **RSS 약 290MB**를 더 씁니다(봇 모듈 전체 로드 기준 80MB vs 369MB).
+
+- `npm run build` — `tsc -p tsconfig.build.json`. `dist/` 생성, 테스트 파일은 제외
+- `npm start` — `node dist/index.js`. pm2도 이 파일을 실행합니다
+- `npm run dev` — ts-node 직접 실행. 로컬에서 빠르게 고쳐볼 때만
+- `npm run typecheck` — 루트 `tsconfig.json`(`noEmit`)으로 **테스트 파일까지** 검사
+- `npm test` — 소스 `.ts`를 ts-node/register로 그대로 실행. 빌드와 무관합니다
+
+tsconfig가 둘인 이유: 루트 것은 검사 전용(테스트 포함), `tsconfig.build.json`은 산출물 전용(테스트 제외)입니다. 하나로 합치면 `dist/`에 테스트가 섞이거나 typecheck가 테스트를 놓칩니다.
+
+**`config.json`은 저장소 루트에 있습니다.** `dist/` 안이 아닙니다 — `dist`는 빌드할 때마다 통째로 다시 만들어지므로 그 안에 두면 갱신할 때마다 사용자 설정이 날아갑니다. `configPath.ts`가 `__dirname`에서 두 단계 위를 잡아 `src/store/`와 `dist/store/` 양쪽에서 같은 파일을 가리킵니다.
 
 ### 슬래시 커맨드는 영어, 서브커맨드 구조
 
