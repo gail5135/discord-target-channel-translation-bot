@@ -61,6 +61,12 @@
 
 출력 채널을 누가 볼 수 있는지는 디스코드 자체 채널 권한(Role 기반 View Channel)으로 **서버 관리자가 직접 설정**합니다. 봇은 해당 채널에 메시지를 보낼 뿐이며, 역할을 조회하거나 검증하지 않습니다. 따라서 `Manage Roles`, `Manage Channels` 권한이 필요 없습니다.
 
+### 단일 서버 전용 (멀티 테넌트 아님)
+
+이 봇은 **한 서버에서만** 돌리려고 만들었습니다. 슬래시 커맨드는 `.env`의 `DISCORD_GUILD_ID` 한 곳에만 등록되므로, 두 번째 서버에 초대하면 메시지 처리는 되지만 `/setting`이 보이지 않습니다.
+
+`config.json`이 `guilds: Record<string, GuildConfig>`로 길드별로 나뉘어 있고 사양서 4.2.1의 근거에 "멀티 테넌트"가 언급되지만, **그것은 저장 구조의 근거일 뿐 배포 범위가 아닙니다.** 코드가 멀티 테넌트처럼 보인다고 커맨드 등록을 글로벌로 "고치지 마세요" — 의도된 범위입니다. 실제로 서버를 늘릴 일이 생기면 `src/deploy-commands.ts`의 `Routes.applicationGuildCommands`를 `Routes.applicationCommands`로 바꾸면 되지만(반영에 최대 1시간), 그 판단은 먼저 물어보세요.
+
 ### 번역 API는 전역 고정 우선순위 failover (길드별 등록 아님)
 
 지원 API는 **DeepL(1순위), Google Translate(2순위)** 두 개입니다. 이 봇을 설치하는 모든 서버가 봇 운영자의 키를 공용으로 사용하므로, 키는 `.env`에 전역으로 보관하고(`DEEPL_API_KEY`, `GOOGLE_TRANSLATE_API_KEY`), 우선순위는 코드 상수로 고정합니다. 서버별로 키를 등록하거나 우선순위를 바꾸는 슬래시 커맨드는 없습니다.
