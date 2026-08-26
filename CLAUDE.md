@@ -118,7 +118,9 @@ Developer Portal에서:
 - `/setting register|list|remove` 전체 동작 — `src/commands/setting.ts`
 - 번역 파이프라인 — `src/services/providers/`(DeepL·Google), `translationService.ts`(failover), `messageQueue.ts`(채널별 직렬), `messageChunks.ts`(2000자 분할), `events/messageCreate.ts`
 - **원 발신자 명의 게시** — `webhookService.ts`(채널별 Webhook 확보·메모리 캐시), `webhookIdentity.ts`(username 정제). 첨부파일은 링크로 전달하며 본문 없는 메시지도 게시한다
-- **배포 준비물** — `ecosystem.config.js`(pm2 — 크래시 루프 차단, 단일 인스턴스 고정), `docs/deployment.md`(GCP e2-micro 절차·갱신·롤백·체크리스트), `README.md`
+- **배포 준비물** — `ecosystem.config.js`(pm2 — 크래시 루프 차단, 단일 인스턴스 고정), `docs/deployment.md`(GCP e2-micro 절차·갱신·롤백·체크리스트), README
+
+**README는 3개 국어입니다.** `README.md`는 언어 선택 페이지이고 내용은 `README_KR.md`·`README_EN.md`·`README_JP.md`에 있습니다(기존 봇 저장소와 같은 구조). **한쪽만 고치지 마세요** — 셋은 같은 내용이어야 합니다. 대상 서버에 일본어·한국어 사용자가 함께 있고 저장소는 공개되어 있어 영어가 필요합니다. `docs/` 아래 문서는 한국어만 있으며, EN·JP README는 그 사실을 명시합니다.
 
 **배포 완료 — 현재 서비스 중입니다.** 기존에 다른 디스코드 봇이 돌고 있던 GCP e2-micro 인스턴스에 함께 올려 pm2로 운영합니다. 절차와 공유 자원 주의점은 `docs/deployment.md` §1-B 참고.
 
