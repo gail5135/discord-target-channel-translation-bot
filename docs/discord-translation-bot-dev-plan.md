@@ -15,7 +15,7 @@
 
 본 문서는 「번역 디스코드 봇 기획 및 사양서」에서 정의한 요구사항을, 실제 코드로 구현하기 위한 기술 스택·아키텍처·개발 단계·일정을 정의한다.
 
-Discord API를 다루는 라이브러리는 언어별로 여러 종류가 있으나(discord.py 등), 본 프로젝트는 **JavaScript/Node.js 진영의 대표 라이브러리인 `discord.js`**를 사용하는 것을 전제로 한다. 기존에 운영 중인 `reaction-summary-bot`(TypeScript + ts-node + pm2)과 동일한 기술 기반을 이어간다. 다만 **실행 방식은 2026-08-25에 갈라졌다** — 이 봇은 ts-node 대신 컴파일된 `dist`를 실행한다(사양서 5.4).
+Discord API를 다루는 라이브러리는 언어별로 여러 종류가 있으나(discord.py 등), 본 프로젝트는 **JavaScript/Node.js 진영의 대표 라이브러리인 `discord.js`**를 사용하는 것을 전제로 한다. 기존에 운영 중인 `reaction-summary-bot`과 동일한 기술 기반(TypeScript + pm2)을 이어간다. 실행 방식은 **2026-08-25에 ts-node에서 컴파일된 `dist` 실행으로 바꿨다**(사양서 5.4). 같은 인스턴스를 공유하는 기존 봇도 컴파일된 JS로 돌고 있음을 `pm2 ls`로 확인했다.
 
 ---
 
