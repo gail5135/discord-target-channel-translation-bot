@@ -103,7 +103,7 @@ discord-translation-bot/
 - **타입 안정성**: `types/index.ts`에 위 구조에 대응하는 TypeScript 인터페이스를 정의하고, 파일 로드 시 스키마 유효성을 검증한다. `jsonStore`의 검증은 최상위 구조만 보므로, `configService.initialize()`에서 길드별로 `translations` 누락을 빈 배열로 채우는 정규화를 수행한다.
 - **설정 ID**: `cfg_` + base36 6자 랜덤(길드 내 충돌 시 재생성). `/setting remove`가 자동완성을 쓰므로 사람이 ID를 읽거나 입력할 일이 없어 순번 카운터를 유지하지 않는다.
 - **버전 필드**: 향후 구조 변경 시 마이그레이션이 가능하도록 최상위에 `version` 필드를 둔다.
-- **보안**: `config.json`에 **자격증명이 없다.** 번역 API 키는 `.env`에 있고, Webhook 토큰은 Phase 4에서 **디스크의 어느 파일에도 기록하지 않기로** 확정했다. 채널별로 `fetchWebhooks()`를 호출해 조회하고, 없으면 생성해서 프로세스 메모리에만 캐싱한다. 재시작하면 캐시가 사라지므로 그때 다시 확보한다. 담기는 것은 서버별 채널·언어 설정뿐이지만 공개할 정보는 아니므로 `.gitignore`와 파일 권한 `0o600`(쓰기 시 코드가 적용)은 유지한다.
+- **보안**: `config.json`에 **자격증명이 없다.** 번역 API 키는 `.env`에 있고, Webhook 토큰은 Phase 4에서 **파일로 저장해두지 않기로** 확정했다. 채널별로 `fetchWebhooks()`를 호출해 조회하고, 없으면 생성해서 프로세스 메모리에만 캐싱한다. 재시작하면 캐시가 사라지므로 그때 다시 확보한다. 담기는 것은 서버별 채널·언어 설정뿐이지만 공개할 정보는 아니므로 `.gitignore`와 파일 권한 `0o600`(쓰기 시 코드가 적용)은 유지한다.
 - **백업**: 원자적 쓰기(`rename`)로 교체하기 직전에 기존 `config.json`을 `config.json.bak`으로 복사한다. 로드 시 파싱 실패 등 손상이 감지되면 `.bak`으로 폴백한다. 클라우드 업로드는 이번 범위에서 다루지 않는다.
 
 ---
@@ -159,7 +159,7 @@ discord-translation-bot/
 - 번역 실패(전체 API 소진) 시 처리 정책 구현
 
 ### Phase 4: 출력 채널 게시 구현
-- 채널별 Webhook 확보(`fetchWebhooks` → 없으면 `createWebhook`) + **메모리 캐시**. 토큰을 디스크에 저장하지 않는다 (`webhookService.ts`)
+- 채널별 Webhook 확보(`fetchWebhooks` → 없으면 `createWebhook`) + **메모리 캐시**. 토큰을 파일로 저장해두지 않는다 (`webhookService.ts`)
 - 원 발신자 이름/아바타로 Webhook 메시지 전송. 본문 첫 줄의 `**작성자**` 접두는 제거(이름이 헤더로 올라가므로 중복)
 - Webhook `username` 제약(1~80자, `discord`/`clyde` 불가)에 맞춘 이름 정제 (`webhookIdentity.ts`)
 - 첨부파일 URL을 본문 뒤에 텍스트로 덧붙인다. egress를 아끼기 위해 다시 업로드하지는 않는다. **본문 없이 첨부만 있는 메시지도 전달**하며, 이때 번역 API는 호출하지 않는다
