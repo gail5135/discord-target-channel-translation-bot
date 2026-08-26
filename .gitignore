@@ -1,10 +1,16 @@
 node_modules/
-.env
+
+# .env 뿐 아니라 사본(".env copy", ".env.local" 등)까지 막는다.
+# 예시 파일만 예외로 둔다 — 자격증명이 없고 저장소에 포함되어야 한다.
+.env*
+!.env.example
+
 dist/
+
+# 설정 파일은 저장소 루트에 있다 (src/store/가 아니다 — configPath.ts 참고)
 /config.json
 /config.json.bak
-src/store/config.json
-src/store/config.json.bak
+
 *.tmp
 .DS_Store
 .worktrees/

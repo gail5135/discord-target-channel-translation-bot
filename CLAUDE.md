@@ -28,7 +28,7 @@
 | 실행기 | 배포는 `tsc` 컴파일 후 `node dist/index.js`. 로컬 개발은 ts-node (`npm run dev`) |
 | 프로세스 매니저 | pm2 |
 | 설정 저장소 | **JSON 파일** (Node 내장 `fs`) — DB 없음 |
-| 호스팅 | GCP e2-micro (Always Free) |
+| 호스팅 | GCP e2-micro (Always Free) — **기존 디스코드 봇과 인스턴스 공유** |
 
 ## 확정된 설계 결정
 
@@ -120,7 +120,7 @@ Developer Portal에서:
 - **원 발신자 명의 게시** — `webhookService.ts`(채널별 Webhook 확보·메모리 캐시), `webhookIdentity.ts`(username 정제). 첨부파일은 링크로 전달하며 본문 없는 메시지도 게시한다
 - **배포 준비물** — `ecosystem.config.js`(pm2 — 크래시 루프 차단, 단일 인스턴스 고정), `docs/deployment.md`(GCP e2-micro 절차·갱신·롤백·체크리스트), `README.md`
 
-Phase 5의 코드·문서 작업은 끝났습니다. 남은 것은 사용자가 GCP 인스턴스를 만든 뒤 수행하는 **배포와 수동 검증**입니다 — 설계서 §5 참고.
+**배포 완료 — 현재 서비스 중입니다.** 기존에 다른 디스코드 봇이 돌고 있던 GCP e2-micro 인스턴스에 함께 올려 pm2로 운영합니다. 절차와 공유 자원 주의점은 `docs/deployment.md` §1-B 참고.
 
 **로그에 REST 오류 객체를 그대로 넘기지 마세요.** `@discordjs/rest`가 요청 URL을 통째로 담는데 Webhook 요청 URL에는 토큰이 들어 있습니다. Webhook 관련 오류는 `webhookService.describeError()`를 거쳐 출력합니다.
 
@@ -133,6 +133,8 @@ Phase 5의 코드·문서 작업은 끝났습니다. 남은 것은 사용자가 
 ## 주의사항
 
 - e2-micro는 RAM 약 1GB, 디스크 30GB, **월 egress 1GB**입니다. 무거운 의존성을 추가하지 마세요. egress를 쓰는 것은 네트워크로 나가는 데이터(예: 첨부파일 재업로드)이지 로그가 아닙니다 — 로그의 위험은 디스크를 채워 서버를 마비시키는 쪽이며, `pm2-logrotate`로 막습니다.
+- **그 인스턴스는 이 봇 전용이 아닙니다.** 기존에 운영하던 다른 디스코드 봇이 같은 인스턴스에서 돌고 있어, 위 자원은 전부 **둘이 나눠 쓰는 값**입니다. 메모리 여유를 계산할 때 1GB를 통째로 가정하지 마세요. 이것이 배포를 컴파일된 `dist` 실행으로 바꾼 실질적 이유이기도 합니다(약 290MB 절감).
+- **pm2 명령에는 앱 이름을 붙이세요.** `pm2 restart discord-translation-bot`처럼 씁니다. 이름 없는 `pm2 restart all`·`pm2 logs`는 옆 봇까지 건드리거나 로그를 뒤섞습니다. `pm2-logrotate` 설정은 앱별이 아니라 **pm2 전역**이라 바꾸면 옆 봇의 정책도 바뀝니다.
 - 봇 토큰과 번역 API 키는 절대 코드나 커밋에 포함하지 마세요. 둘 다 `.env`로 관리합니다(서버별 채널/언어 설정만 `config.json`, gitignore 대상).
 
 ### 로그에 절대 넣지 않는 것

@@ -110,11 +110,13 @@ npm run typecheck   # tsc --noEmit — 테스트 파일까지 검사합니다
 npm run build       # tsc -p tsconfig.build.json — dist/ 생성, 테스트는 제외
 ```
 
-배포는 컴파일된 `dist/`를 실행합니다. ts-node는 TypeScript 컴파일러를 프로세스에 상주시켜 RSS가 **약 290MB** 더 드는데(실측), RAM 1GB인 배포 대상에서는 그 차이가 큽니다. 로컬에서 빠르게 고쳐가며 볼 때는 `npm run dev`가 편합니다.
+배포는 컴파일된 `dist/`를 실행합니다. ts-node는 TypeScript 컴파일러를 프로세스에 상주시켜 RSS가 **약 290MB** 더 드는데(실측 369MB vs 80MB), RAM 1GB인 배포 대상에서는 그 차이가 큽니다. 로컬에서 빠르게 고쳐가며 볼 때는 `npm run dev`가 편합니다.
 
 ## 배포
 
 GCP e2-micro(Always Free)에 pm2로 올리는 절차는 [`docs/deployment.md`](docs/deployment.md)에 있습니다.
+
+이 봇은 **기존에 다른 디스코드 봇이 돌고 있던 인스턴스에 함께 올려** 운영합니다. RAM·디스크·egress·pm2 전역 설정이 모두 공유 자원이므로, 같은 구성으로 올릴 계획이라면 [`docs/deployment.md` §1-B](docs/deployment.md)를 먼저 읽어주세요. pm2 명령에는 앱 이름(`discord-translation-bot`)을 명시합니다.
 
 ## 문서
 
