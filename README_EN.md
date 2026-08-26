@@ -97,7 +97,7 @@ Supported languages: 한국어, English, 日本語, 中文(简体), Español, Fr
 
 Per-server channel and language settings live in `config.json` at the repository root (gitignored). `dist/` is rebuilt from scratch on every build, so the settings are kept outside it. The file is read into memory at startup and written only when a slash command changes something.
 
-**There are no credentials in this file.** API keys live in `.env`, and webhook tokens are never stored at all — they are cached in memory only and re-acquired after a restart.
+**There are no credentials in this file.** API keys live in `.env`, and webhook tokens are **never written to disk at all**. They are cached in process memory only, so they vanish when the bot restarts and are re-acquired per channel at that point.
 
 Writes are atomic: the data goes to a temporary file that then replaces the original, and the previous version is copied to `config.json.bak` just before the swap. If the file is found corrupted, the bot falls back to the backup. You may edit it by hand — entries with missing fields are dropped at startup, and the count is logged.
 
