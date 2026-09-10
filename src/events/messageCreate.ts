@@ -17,8 +17,13 @@ const FAILURE_NOTICE_COOLDOWN_MS = 10 * 60 * 1000;
 const failureNotice = createCooldown(FAILURE_NOTICE_COOLDOWN_MS);
 const unavailableLog = createCooldown(FAILURE_NOTICE_COOLDOWN_MS);
 
+function sourceUrl(message: Message): string {
+  return `https://discord.com/channels/${message.guildId}/${message.channelId}/${message.id}`;
+}
+
+/** 청크 끝에 붙일 접미사. 앞의 개행이 본문과 링크를 갈라놓는다. */
 function sourceLink(message: Message): string {
-  return `\nhttps://discord.com/channels/${message.guildId}/${message.channelId}/${message.id}`;
+  return `\n${sourceUrl(message)}`;
 }
 
 /**
@@ -43,15 +48,26 @@ function notifyChannelUnavailable(targetChannelId: string): void {
   console.error(`[messageCreate] output channel ${targetChannelId} is unavailable`);
 }
 
-async function notifyFailure(channel: TextChannel): Promise<void> {
+/**
+ * 쿨다운 때문에 알림은 10분에 한 번만 뜬다. 링크가 없으면 어느 메시지부터
+ * 빠졌는지 알 수 없으므로, 알림을 유발한 메시지의 원문 링크를 함께 남긴다.
+ */
+export function failureNoticeContent(sourceUrl: string): string {
+  return (
+    'Translation is currently failing for every configured provider. ' +
+    'Messages are not being translated until this is resolved. ' +
+    'Check the server logs and the API quota.\n' +
+    'The message that failed:\n' +
+    sourceUrl
+  );
+}
+
+async function notifyFailure(channel: TextChannel, message: Message): Promise<void> {
   if (!failureNotice.claim(channel.id)) return;
 
   await channel
     .send({
-      content:
-        'Translation is currently failing for every configured provider. ' +
-        'Messages are not being translated until this is resolved. ' +
-        'Check the server logs and the API quota.',
+      content: failureNoticeContent(sourceUrl(message)),
       allowedMentions: { parse: [] },
     })
     .catch((error: unknown) => console.error('[messageCreate] failed to post failure notice', error));
@@ -150,7 +166,7 @@ async function translateAndPost(
   } catch (error) {
     if (error instanceof AllProvidersFailedError) {
       console.error(`[messageCreate] ${error.message}`);
-      await notifyFailure(channel);
+      await notifyFailure(channel, message);
       return;
     }
     console.error('[messageCreate] unexpected translation error', error);
